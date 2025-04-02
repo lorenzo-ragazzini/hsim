@@ -41,18 +41,14 @@ class Scheduler(sched.scheduler):
     def run(self, blocking=True):
         delayfunc, timefunc, pop, push, lock, past = self.delayfunc, self.timefunc, heapq.heappop, heapq.heappush, self._lock, self._past
         while True:
-            with lock:
-                if not self.queue:
-                    break
-                event = self.queue[0]
-                now = timefunc()
-                if event.time > now:
-                    delay = True
-                else:
-                    delay = False
-                    pop(self.queue), pop(self._queue)
-            if delay:
+            # with lock:
+            if not self._queue:
+                break
+            event = pop(self._queue)
+            now = timefunc()
+            if event.time > now:
                 delayfunc(event.time - now)
+                push(self._queue, event)
             else:
                 if event.pending:
                     event.time = np.inf
@@ -68,28 +64,7 @@ class Scheduler(sched.scheduler):
                             event.add()
                             continue
                     event.trigger()
-                    if callable(event.action):
-                        try:
-                            event.action(*event.arguments, **event.kwargs)
-                        except Exception as e:
-                            if DEBUG:
-                                event.action(*event.arguments, **event.kwargs)
-                                print(f"Error in event {event}: {e}. Action: {event.action}. Arguments: {event.arguments}")
-                            else:
-                                raise e
-                    else: #Iterable
-                        if len(event.arguments) == 0:
-                            event.arguments = [() for _ in range(len(event.action))]
-                        elif len(event.arguments) != len(event.action):
-                            raise ValueError("Arguments do not match")
-                        for index, action in enumerate(event.action):
-                            try:
-                                action(*event.arguments[index], **event.kwargs)
-                            except Exception as e:
-                                if DEBUG:
-                                    print(f"Error in event {event}: {e}. Action: {event.action}. Arguments: {event.arguments}")
-                                else:
-                                    raise e
+                    self.execute(event)
                     delayfunc(0)   # Let other threads run
                     push(self._past, event)
                     event.process()
@@ -103,6 +78,29 @@ class Scheduler(sched.scheduler):
     def queue(self):
         events = [event for event in self._queue if event.time >= self.timefunc() and event.time < float('inf')]
         return list(map(heapq.heappop, [events]*len(events)))
+    def execute(self,event):
+        if callable(event.action):
+            try:
+                event.action(*event.arguments, **event.kwargs)
+            except Exception as e:
+                if DEBUG:
+                    event.action(*event.arguments, **event.kwargs)
+                    print(f"Error in event {event}: {e}. Action: {event.action}. Arguments: {event.arguments}")
+                else:
+                    raise e
+        else: #Iterable
+            if len(event.arguments) == 0:
+                event.arguments = [() for _ in range(len(event.action))]
+            elif len(event.arguments) != len(event.action):
+                raise ValueError("Arguments do not match")
+            for index, action in enumerate(event.action):
+                try:
+                    action(*event.arguments[index], **event.kwargs)
+                except Exception as e:
+                    if DEBUG:
+                        print(f"Error in event {event}: {e}. Action: {event.action}. Arguments: {event.arguments}")
+                    else:
+                        raise e 
     def cancel(self, event):
         self._queue.remove(event)
         heapq.heapify(self._queue)
