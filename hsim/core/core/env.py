@@ -60,22 +60,13 @@ class Scheduler(sched.scheduler):
                 elif "StopSimulation" in event.kwargs:
                     break
                 else:
-                    if isinstance(event, ConditionEvent):
-                        if not event.verify():
-                            # was too fast!
-                            event._status, event.time = Status.SCHEDULED, np.inf
-                            event.add()
-                            continue
                     event.trigger()
+                    if event.time == np.inf:
+                        continue
                     self.execute(event)
                     delayfunc(0)   # Let other threads run
                     push(self._past, event)
                     event.process()
-            #[event.verify() for event in self._queue if isinstance(event, ConditionEvent)]
-    @property
-    def queue(self):
-        events = [event for event in self._queue if event.time >= self.timefunc() and event.time < float('inf')]
-        return list(map(heapq.heappop, [events]*len(events)))
             for event in reversed(self._conditions):
                 result = event.verify()
                 if result:
