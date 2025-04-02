@@ -28,7 +28,7 @@ class Scheduler(sched.scheduler):
         heapq.heapify(self._queue)
     def enter(self, event: 'Event') -> 'Event':
         heapq.heappush(self._queue, event)
-        heapq.heapify(self._queue)
+        return event
         return event
     def enterabs(self, time, priority, action=object, argument=(), kwargs=sched._sentinel) -> 'Event':
         if kwargs is sched._sentinel:
@@ -101,9 +101,20 @@ class Scheduler(sched.scheduler):
                         print(f"Error in event {event}: {e}. Action: {event.action}. Arguments: {event.arguments}")
                     else:
                         raise e 
+    def trigger(self, event):
+        self._queue.append(event)
+        heapq._siftup(self._queue, len(self._queue) - 1)
     def cancel(self, event):
-        self._queue.remove(event)
-        heapq.heapify(self._queue)
+        # self._queue.remove(event)
+        # heapq.heapify(self._queue)
+        
+        index = self._queue.index(event)
+        self._queue[index] = self._queue[-1]
+        self._queue.pop()  # Remove the last element
+        if index < len(self._queue):
+            heapq._siftup(self._queue, index)    # Restore the heap property upwards
+            heapq._siftdown(self._queue, 0, index)  # Restore the heap property downwards
+
         
 class Context:
     def __enter__(self):

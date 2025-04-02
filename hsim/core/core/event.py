@@ -63,10 +63,8 @@ class BaseEvent():
     def trigger(self) -> None:
         self._status = Status.TRIGGERED
         if self.time == np.inf:
-            self.time = self.env.now
-            self.priority = 0
-            self.env.scheduler.heapify()
-            # self.env.scheduler.enter(self)
+            self.time, self.priority = self.env.now, 0
+            self.env.scheduler.trigger(self)
     def process(self) -> None:
         self._status = Status.PROCESSED
     @property
