@@ -95,9 +95,12 @@ class Scheduler(sched.scheduler):
                         print(f"Error in event {event}: {e}. Action: {event.action}. Arguments: {event.arguments}")
                     else:
                         raise e 
+<<<<<<< HEAD
     def trigger(self, event):
         self._queue.append(event)
         heapq._siftup(self._queue, len(self._queue) - 1)
+=======
+>>>>>>> af72460 (Update env.py)
     def cancel(self, event):
         # self._queue.remove(event)
         # heapq.heapify(self._queue)
