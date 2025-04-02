@@ -24,11 +24,14 @@ class Scheduler(sched.scheduler):
         self._lock = Context()
         self._past = list()
         self._env = env
+        self._conditions = list()
     def heapify(self):
         heapq.heapify(self._queue)
     def enter(self, event: 'Event') -> 'Event':
         heapq.heappush(self._queue, event)
         return event
+    def entercondition(self, event: 'ConditionEvent') -> 'ConditionEvent':
+        self._conditions.append(event)
         return event
     def enterabs(self, time, priority, action=object, argument=(), kwargs=sched._sentinel) -> 'Event':
         if kwargs is sched._sentinel:
@@ -69,15 +72,15 @@ class Scheduler(sched.scheduler):
                     push(self._past, event)
                     event.process()
             #[event.verify() for event in self._queue if isinstance(event, ConditionEvent)]
-            for event in self._queue:
-                if isinstance(event, ConditionEvent):
-                    result = event.verify()
-                    if result:
-                        break
     @property
     def queue(self):
         events = [event for event in self._queue if event.time >= self.timefunc() and event.time < float('inf')]
         return list(map(heapq.heappop, [events]*len(events)))
+            for event in reversed(self._conditions):
+                result = event.verify()
+                if result:
+                    break
+
     def execute(self,event):
         if callable(event.action):
             try:

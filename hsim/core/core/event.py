@@ -6,6 +6,7 @@ if __name__ == "__main__":
     sys.path.append("//".join(os.path.abspath(__file__).split("\\")[:os.path.abspath(__file__).split("\\").index("hsim")+1]))
 
 
+from abc import abstractmethod
 from enum import Enum, auto
 from typing import Any, Callable, Iterable, List, Optional, Union
 from warnings import warn
@@ -140,6 +141,18 @@ class ConditionEvent(BaseEvent):
             return True
         else:
             return False
+    def add(self) -> ConditionEvent:
+        self.env.scheduler.entercondition(self)
+        return self
+    def trigger(self) -> None:
+        if self.condition():
+            super().trigger()
+        else:
+            self.schedule(np.inf)
+            self.add()
+    @abstractmethod
+    def schedule(self, time=None):
+        raise NotImplementedError("schedule method not implemented for ConditionEvent")
             
 class RecurringEvent(BaseEvent):
     def __init__(self, env: 'Environment', priority: float | int = 1, action: Iterable[Callable[..., Any]] | Callable[..., Any] = object, arguments: Any = [], **kwargs: Any): # type: ignore
