@@ -5,6 +5,7 @@ if __name__ == "__main__":
     sys.path.append("//".join(os.path.abspath(__file__).split("\\")[:os.path.abspath(__file__).split("\\").index("hsim")+1]))
 
 
+from tqdm import tqdm
 from hsim.core.des.pymulate import Store, Environment, Generator, Server, Buffer, Terminator
 from hsim.core.des.manual import Operator, ManualStation
 
@@ -397,30 +398,8 @@ def main(filename,folder='',fullpath='',app=True,pa=False):
     ele2queueIn.connections["next"] = ele2
     ele2.connections["next"] = ele2queueOut
     ele2queueOut.connections["next"] = ele_line1
-    ele_line1.connections["next"] = ele_line2
-    ele_line2.connections["next"] = ele_line3
-    ele_line3.connections["next"] = ele_line4
-    ele_line4.connections["next"] = ele_line5
-    ele_line5.connections["next"] = ele_line6
-    ele_line6.connections["next"] = ele_line7
-    ele_line7.connections["next"] = ele_line8
-    ele_line8.connections["next"] = ele_line9
-    ele_line9.connections["next"] = ele_line10
-    ele_line10.connections["next"] = ele_line11
-    ele_line11.connections["next"] = ele_line12
-    ele_line12.connections["next"] = ele_line13
-    ele_line13.connections["next"] = ele_line14
-    ele_line14.connections["next"] = ele_line15
-    ele_line15.connections["next"] = ele_line16
-    ele_line16.connections["next"] = ele_line17
-    ele_line17.connections["next"] = ele_line18
-    ele_line18.connections["next"] = ele_line19
-    ele_line19.connections["next"] = ele_line20
-    ele_line20.connections["next"] = ele_line21
-    ele_line21.connections["next"] = ele_line22
-    ele_line22.connections["next"] = ele_line23
-    ele_line23.connections["next"] = ele_line24
-    ele_line24.connections["next"] = ele_line25
+    for i in range(1, 25):
+        globals()[f"ele_line{i}"].connections["next"] = globals()[f"ele_line{i+1}"]
     ele_line25.connections["next"] = ele_line26.input_ports[0]
     
     ele_line26.output_ports[0].connections["next"] = final1ele
@@ -487,24 +466,20 @@ def main(filename,folder='',fullpath='',app=True,pa=False):
     from hsim.core.utils import utils
     utils.create_connection_chart(list(env._agents.values()))
     
-    for i in range(step,time_end,step):
-        env.run(i)
-        prod_parts.append(len(T.store))
-        if True: # monitoring
-            print('Time elapsed: %d [s]' %i)
-            if len(T.store)==0:
-                print('Warning - no output')
-            else:
-
-                print(len(T.store))
-            elapsed = time.time()-time_start
+    # for i in range(step,time_end,step):
+    with tqdm(total=time_end/60, desc="Simulation progress", unit="steps", position=0, leave=True, dynamic_ncols=True) as pbar, \
+        tqdm(total=1000, desc="Output progress", unit="items", position=1, leave=True) as output_bar:
+        for i in range(step,time_end,step):
+            env.run(i)
+            pbar.update(step/60)
+            output_bar.update(len(T.store) - output_bar.n)
+            prod_parts.append(len(T.store))
             utils.log2(env)
+            elapsed = time.time()-time_start
             if elapsed>180:
                 print('timeout')
                 break
-            else:
-                print(elapsed)
-    print('Done!')
+        print(elapsed)
     # env.state_log2 = pd.DataFrame(env.state_log,columns = env.state_log2.columns)
     env.state_log2 = env.log
     
