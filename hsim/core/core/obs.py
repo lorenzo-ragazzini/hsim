@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Iterable, Optional, Type, Union
-from reaktiv import Signal, Computed, Effect
+from reaktiv import Signal, ComputeSignal, Effect
 import operator
 
 # Monkey-patch Reaktiv's Signal.get() to avoid expensive f-string evaluation in debug_log
@@ -239,7 +239,7 @@ class Observable(ABC):
         return ObservableProxy(self, accessor=accessor, attr_name=attr_name)
     
 
-class ObservableExpression(Computed, Observable):
+class ObservableExpression(ComputeSignal, Observable):
     def __init__(self, op: Callable, *operands: Union['ObservableVariable','ObservableExpression'],env=None):
         if op in [all, any]:
             super().__init__(lambda: op([operand() if isinstance(operand, (ObservableVariable, ObservableExpression)) else operand for operand in operands[0]]))
@@ -254,7 +254,7 @@ class ObservableExpression(Computed, Observable):
     # @property
     # def value(self):
     #     """Backward compatibility - delegate to Reaktiv's call syntax"""
-    #     return self()  # Computed.__call__ returns cached value
+    #     return self()  # ComputeSignal.__call__ returns cached value
 
 class ObservableVariable(Signal, Observable):
     def __init__(self, initial: Any, env=None):
