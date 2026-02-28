@@ -90,6 +90,8 @@ class Operator(Agent):
         
    
 def test1():
+    print("Test 1 was for previous version of Obs")
+    return
     env = Environment()
     a = ManualStation(env,serviceTime=10)
     b = Store(env)
@@ -115,6 +117,19 @@ def test1():
     env.run(30)
     
 def test2():
+    env = Environment()
+    a = ManualStation(env,serviceTime=10)
+    b = Store(env)
+    q = Queue(env,10)
+    op = Operator(env)
+    a.connections["next"] = b
+    b.connections["next"] = q
+    op.connections["stations"].append(a)
+    a.take(Agent(env,"test2"))
+    env.run(50)
+    pass
+
+def test3():
     from hsim.core.des.pymulate import Generator
     env = Environment()
     g = Generator(env, serviceTime=5)
@@ -131,4 +146,5 @@ def test2():
 
 if __name__ == "__main__":
     test2()
+    test3()
     print("Test completed.")
