@@ -17,6 +17,7 @@ if __name__ == "__main__":
         
 from enum import Enum, auto
 from typing import Any, Callable, Iterable, List, Optional, Union
+from heapq import heappush as push, heappop as pop
 import numpy as np
 
 class Status(Enum):
@@ -76,8 +77,9 @@ class BaseEvent():
         self.time = time if time else self.time
         self._status = Status.SCHEDULED
         if self._in_queue:
+            raise ValueError("Event is already scheduled.")
             self.env.scheduler._queue.remove(self)
-            self.env.scheduler._queue.add(self)
+            push(self.env.scheduler._queue, self)
         return self
     def trigger(self,priority=0) -> None:
         self._status = Status.TRIGGERED
@@ -86,7 +88,7 @@ class BaseEvent():
             self.time = self.env.now
             self.priority = priority
             self._canceled = False  # Ensure event is not canceled when triggered
-            self.env.scheduler._queue.add(self)
+            push(self.env.scheduler._queue, self)
     def process(self) -> None:
         self._status = Status.PROCESSED
     @property
@@ -108,17 +110,17 @@ class BaseEvent():
     def canceled(self) -> bool:
         return self._canceled
     def __lt__(self, other: BaseEvent) -> bool:
-        return (self.time, self.priority, self.sequence) < (other.time, other.priority, other.sequence)
+        return (self.time, self.priority, -self.sequence) < (other.time, other.priority, -other.sequence)
     def __le__(self, other: BaseEvent) -> bool:
-        return (self.time, self.priority, self.sequence) <= (other.time, other.priority, other.sequence)
+        return (self.time, self.priority, -self.sequence) <= (other.time, other.priority, -other.sequence)
     def __eq__(self, other: BaseEvent) -> bool:
-        return (self.time, self.priority, self.sequence) == (other.time, other.priority, other.sequence)
+        return (self.time, self.priority, -self.sequence) == (other.time, other.priority, -other.sequence)
     def __ne__(self, other: BaseEvent) -> bool:
-        return (self.time, self.priority, self.sequence) != (other.time, other.priority, other.sequence)
+        return (self.time, self.priority, -self.sequence) != (other.time, other.priority, -other.sequence)
     def __gt__(self, other: BaseEvent) -> bool:
-        return (self.time, self.priority, self.sequence) > (other.time, other.priority, other.sequence)
+        return (self.time, self.priority, -self.sequence) > (other.time, other.priority, -other.sequence)
     def __ge__(self, other: BaseEvent) -> bool:
-        return (self.time, self.priority, self.sequence) >= (other.time, other.priority, other.sequence)
+        return (self.time, self.priority, -self.sequence) >= (other.time, other.priority, -other.sequence)
     
     
 class TimedEvent(BaseEvent):

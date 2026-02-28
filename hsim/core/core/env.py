@@ -12,6 +12,7 @@ if __name__ == "__main__":
 
     
 from sortedcontainers import SortedList
+from heapq import heappush as push, heappop as pop
 import time
 from typing import Any, Callable, Optional, Union
 from collections import OrderedDict
@@ -29,7 +30,7 @@ class Scheduler():
         self._lock = Context()
         self._past = list()
         self._env = env
-        self._queue = SortedList(key=lambda event: (event.time, event.priority, -event.sequence))
+        self._queue = [] #SortedList(key=lambda event: (event.time, event.priority, -event.sequence))
         class Never(dict):
             def add(self, event):
                 super().update({id(event): event})
@@ -46,7 +47,7 @@ class Scheduler():
         if event.time == np.inf:
             self._never.add(event)
         else:
-            self._queue.add(event)
+            push(self._queue, event)
             event._in_queue = True
         return event
     def enterabs(self, time, priority, action=object, argument=(), kwargs={}) -> 'Event':
@@ -58,7 +59,7 @@ class Scheduler():
     def run(self, blocking=True):
         delayfunc, timefunc, lock, past = self.delayfunc, self.timefunc, self._lock, self._past
         while self._queue:
-            event = self._queue.pop(0)
+            event = pop(self._queue)
             from hsim.core.core.msg import Message
             if len(event.arguments) > 0 and isinstance(event.arguments[0], Message):
                 pass
