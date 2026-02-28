@@ -30,13 +30,24 @@ class Scheduler():
         self._past = list()
         self._env = env
         self._queue = SortedList(key=lambda event: (event.time, event.priority, -event.sequence))
+        class Never(dict):
+            def add(self, event):
+                super().update({id(event): event})
+            def remove(self, event):
+                return super().pop(id(event), None)
+        self._never = Never()
         # self._conditions = SortedList(key=lambda event: (event.time, event.priority, event.sequence))
         self._sequence_generator = Counter()
         self.timefunc = timefunc
         self.delayfunc = delayfunc
     def enter(self, event: 'Event') -> 'Event':
-        self._queue.add(event)
-        event._in_queue = True
+        # self._queue.add(event)
+        # event._in_queue = True
+        if event.time == np.inf:
+            self._never.add(event)
+        else:
+            self._queue.add(event)
+            event._in_queue = True
         return event
     def enterabs(self, time, priority, action=object, argument=(), kwargs={}) -> 'Event':
         return self.enter(TimedEvent(self._env, time, priority, action, argument, **kwargs))
@@ -48,13 +59,19 @@ class Scheduler():
         delayfunc, timefunc, lock, past = self.delayfunc, self.timefunc, self._lock, self._past
         while self._queue:
             event = self._queue.pop(0)
+            from hsim.core.core.msg import Message
+            if len(event.arguments) > 0 and isinstance(event.arguments[0], Message):
+                pass
             event._in_queue = False
+            if len(self._queue) < 3:
+                pass
             if getattr(event, "_canceled", False):
                 continue
             elif event.time == np.inf:
-                continue
+                raise RuntimeError(f"Event {event} has infinite time but is still in the queue. This should not happen. Event should  have been canceled")
             delayfunc(event.time - timefunc())
             if event.pending:
+                raise RuntimeError(f"Event {event} is still pending after delay. This should not happen.")
                 event.time = np.inf
                 event.schedule()
                 self.enter(event)

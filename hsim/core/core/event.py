@@ -42,17 +42,21 @@ class BaseEvent():
         self._canceled = False  # Add canceled flag
         self._should_reset_on_false = False  # Default for all events
         self._in_queue = False  # Track queue membership
-    def add(self) -> BaseEvent:
+    def add(self,canceled=False) -> BaseEvent:
         # If event is still in the queue, just unflag canceled
-        self._canceled = False
+        self._canceled = canceled
         if not self._in_queue:
            self.env.scheduler.enter(self)
+        elif self.canceled:
+           self.env.scheduler.enter(self)
+        else:
+            print(f"What's up with this event {self}? It's already in the queue and not canceled.")
         return self
     def reset(self) -> BaseEvent:
         self.cancel(safe=False)
         self.time = np.inf
         self._status = Status.PENDING
-        return self.add()
+        return self.add(canceled=True)
     def cancel(self, safe=True) -> None:
         self._canceled = True  # Just flag as canceled
     def add_action(self, action:Callable, arguments: Any = []) -> None:
@@ -78,7 +82,7 @@ class BaseEvent():
     def trigger(self,priority=0) -> None:
         self._status = Status.TRIGGERED
         if self.time == np.inf:
-            self.env.scheduler._queue.remove(self) if self._in_queue else None
+            self.env.scheduler._never.remove(self)
             self.time = self.env.now
             self.priority = priority
             self.env.scheduler._queue.add(self)
