@@ -467,6 +467,9 @@ def test3():
     x2 = Agent(env,"test2")
     a.take(x2)
     env.run(30)
+    assert len(a.store) == 0, "Server should be empty after processing"
+    assert len(b.store) == 0, "Buffer should be empty after forwarding"
+    assert len(q) == 2, "Queue should have both agents after forwarding"
     
 def test3bis():
     env = Environment()
@@ -482,6 +485,9 @@ def test3bis():
     x2 = Agent(env,"test2")
     a.take(x2)
     env.run(30)
+    assert len(a.store) == 0, "Server should be empty after processing"
+    assert len(b.store) == 0, "Buffer should be empty after forwarding"
+    assert len(q) == 2, "Queue should have both agents after forwarding"
     
 def test4():
     env = Environment()

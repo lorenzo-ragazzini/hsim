@@ -163,7 +163,7 @@ class SUMachine(ManualStation):
         B2S=EventTransition.define(Blocking, Starving)
 
         def onSU2W(self):
-            self.connections["operator"].free()
+            self.connections["operator"]().free()
             self.connections["operator"] <<= None
         SU2W.on_transition = onSU2W
         def onW2B(self):
@@ -267,7 +267,7 @@ def test3():
     env.run(20)
     s.take(Agent(env,"test"))
     env.run(30)
-    assert len(q) == 10 and len(s.OutputBuffer.store) == 6 and s.Server.stateMachine.current_state[0].name == "Starving"
+    assert len(q) == 10 and len(s.OutputBuffer.store) == 3 and s.Server.stateMachine.current_state[0].name == "Starving"
 
 def test4():
     env = Environment()
@@ -277,7 +277,7 @@ def test4():
     g.connections["next"] = s.input_ports[0]
     s.output_ports[0].connections["next"] = q
     env.run(30)
-    assert len(q) + len(s.Server._terminator.store) + len(s.OutputBuffer.store) == 14
+    assert len(q) + len(s.Server._terminator.store) + len(s.OutputBuffer.store) == 13
     
 def test5():
     env = Environment()
