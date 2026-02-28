@@ -85,6 +85,7 @@ class BaseEvent():
             self.env.scheduler._never.remove(self)
             self.time = self.env.now
             self.priority = priority
+            self._canceled = False  # Ensure event is not canceled when triggered
             self.env.scheduler._queue.add(self)
     def process(self) -> None:
         self._status = Status.PROCESSED
