@@ -138,56 +138,56 @@ class DelayEvent(BaseEvent):
         return cls(env, env.now + delay, priority)
 
 
-class ConditionEvent(BaseEvent):
-    def __init__(self, env: 'Environment', condition: Callable[[], bool], priority: Union[float,int] = 1, action:Union[Iterable[Callable[..., Any]], Callable[..., Any]]=object, arguments: Any = [], **kwargs: Any): # type: ignore
-        super().__init__(env, priority,action, arguments, **kwargs)
-        self.condition = condition
-        self._status : Status = Status.CONDITIONED
-        self._conditioned = True
+# class ConditionEvent(BaseEvent):
+#     def __init__(self, env: 'Environment', condition: Callable[[], bool], priority: Union[float,int] = 1, action:Union[Iterable[Callable[..., Any]], Callable[..., Any]]=object, arguments: Any = [], **kwargs: Any): # type: ignore
+#         super().__init__(env, priority,action, arguments, **kwargs)
+#         self.condition = condition
+#         self._status : Status = Status.CONDITIONED
+#         self._conditioned = True
         
-    def add(self) -> BaseEvent:
-        self.env.scheduler._conditions.add(self)
-        return self
+#     def add(self) -> BaseEvent:
+#         self.env.scheduler._conditions.add(self)
+#         return self
     
-    def trigger(self) -> None:
-        self._status = Status.TRIGGERED
-        if self.time == np.inf:
-            self.env.scheduler._conditions.remove(self)
-            self.time = self.env.now
-            self.priority = 0
-            self.env.scheduler._queue.add(self)
+#     def trigger(self) -> None:
+#         self._status = Status.TRIGGERED
+#         if self.time == np.inf:
+#             self.env.scheduler._conditions.remove(self)
+#             self.time = self.env.now
+#             self.priority = 0
+#             self.env.scheduler._queue.add(self)
 
-    def verify(self) -> bool:
-        if self.condition():
-            self.trigger()
-            return True
-        else:
-            return False
+#     def verify(self) -> bool:
+#         if self.condition():
+#             self.trigger()
+#             return True
+#         else:
+#             return False
         
-class VerifiableEvent(ConditionEvent):
-    def __init__(self, env: 'Environment', condition: Callable[[], bool], priority: Union[float,int] = 1, action:Union[Iterable[Callable[..., Any]], Callable[..., Any]]=object, arguments: Any = [], **kwargs: Any): # type: ignore
-        super().__init__(env, condition, priority, action, arguments, **kwargs)
-        self.verifiable = True
+# class VerifiableEvent(ConditionEvent):
+#     def __init__(self, env: 'Environment', condition: Callable[[], bool], priority: Union[float,int] = 1, action:Union[Iterable[Callable[..., Any]], Callable[..., Any]]=object, arguments: Any = [], **kwargs: Any): # type: ignore
+#         super().__init__(env, condition, priority, action, arguments, **kwargs)
+#         self.verifiable = True
         
-    def verify(self) -> bool:
-        if self.condition():
-            self.trigger()
-            return True
-        else:
-            self.verifiable = False
-            return False
+#     def verify(self) -> bool:
+#         if self.condition():
+#             self.trigger()
+#             return True
+#         else:
+#             self.verifiable = False
+#             return False
         
-    def add(self) -> BaseEvent:
-        self.env.scheduler.enter(self)
-        return self
+#     def add(self) -> BaseEvent:
+#         self.env.scheduler.enter(self)
+#         return self
     
-    def trigger(self) -> None:
-        self._status = Status.TRIGGERED
-        if self.time == np.inf:
-            self.env.scheduler._queue.remove(self)
-            self.time = self.env.now
-            self.priority = 0
-            self.env.scheduler._queue.add(self)
+#     def trigger(self) -> None:
+#         self._status = Status.TRIGGERED
+#         if self.time == np.inf:
+#             self.env.scheduler._queue.remove(self)
+#             self.time = self.env.now
+#             self.priority = 0
+#             self.env.scheduler._queue.add(self)
 
 
 class ConditionedEvent(BaseEvent):
@@ -236,18 +236,18 @@ class RecurringEvent(BaseEvent):
     def __iter__(self) -> BaseEvent:
         return self.new()
     
-class AnyEvent(ConditionEvent):
-    def __init__(self, env: 'Environment', events:Iterable[ConditionEvent], priority: Union[float,int] = 1, action:Union[Iterable[Callable[..., Any]], Callable[..., Any]]=object, **kwargs: Any): # type: ignore
-        arguments = [event for event in events]
-        condition = lambda: any([event.condition() for event in events])
-        super().__init__(env, condition, priority, action, arguments, **kwargs)
+# class AnyEvent(ConditionEvent):
+#     def __init__(self, env: 'Environment', events:Iterable[ConditionEvent], priority: Union[float,int] = 1, action:Union[Iterable[Callable[..., Any]], Callable[..., Any]]=object, **kwargs: Any): # type: ignore
+#         arguments = [event for event in events]
+#         condition = lambda: any([event.condition() for event in events])
+#         super().__init__(env, condition, priority, action, arguments, **kwargs)
         
         
-class AllEvent(ConditionEvent):
-    def __init__(self, env: 'Environment', events:Iterable[ConditionEvent], priority: Union[float,int] = 1, action:Union[Iterable[Callable[..., Any]], Callable[..., Any]]=object, **kwargs: Any): # type: ignore
-        arguments = [event for event in events]
-        condition = lambda: all([event.condition() for event in events])
-        super().__init__(env, condition, priority, action, arguments, **kwargs)
+# class AllEvent(ConditionEvent):
+#     def __init__(self, env: 'Environment', events:Iterable[ConditionEvent], priority: Union[float,int] = 1, action:Union[Iterable[Callable[..., Any]], Callable[..., Any]]=object, **kwargs: Any): # type: ignore
+#         arguments = [event for event in events]
+#         condition = lambda: all([event.condition() for event in events])
+#         super().__init__(env, condition, priority, action, arguments, **kwargs)
         
     
 def attachAction(action, arguments: List[Any] = []) -> Callable[..., Any]:

@@ -30,7 +30,7 @@ class Scheduler():
         self._past = list()
         self._env = env
         self._queue = SortedList(key=lambda event: (event.time, event.priority, -event.sequence))
-        self._conditions = SortedList(key=lambda event: (event.time, event.priority, event.sequence))
+        # self._conditions = SortedList(key=lambda event: (event.time, event.priority, event.sequence))
         self._sequence_generator = Counter()
         self.timefunc = timefunc
         self.delayfunc = delayfunc
@@ -72,11 +72,11 @@ class Scheduler():
                 past.append(event)
                 event.process()
             # Only check conditioned events in the queue
-            self.check_conditioned_events()
-    def check_conditioned_events(self):
-        for cond_event in self._conditions:
-            if not getattr(cond_event, "_canceled", False) and cond_event.verify():
-                break
+            # self.check_conditioned_events()
+    # def check_conditioned_events(self):
+    #     for cond_event in self._conditions:
+    #         if not getattr(cond_event, "_canceled", False) and cond_event.verify():
+    #             break
     def execute(self,event):
         """
         Execute event action(s).
@@ -112,17 +112,18 @@ class Scheduler():
                         logger = logging.getLogger(__name__)
                         logger.error(f"Error executing action {index} of event {event}: {e}", exc_info=True)
                         raise 
-    def cancel(self, event):
-        # Just flag as canceled, do not remove from queue
-        event.cancel()
+    # def cancel(self, event):
+    #     print(f"Canceling event: {event}")
+    #     # Just flag as canceled, do not remove from queue
+    #     event.cancel()
 
-    def cleaner(self):
-        # Remove all canceled events from the queue
-        canceled_events = [e for e in self._queue if getattr(e, "_canceled", False)]
-        for event in canceled_events:
-            event._in_queue = False
-        self._queue = type(self._queue)([e for e in self._queue if not getattr(e, "_canceled", False)], key=self._queue.key)
-        self._conditions = type(self._conditions)([e for e in self._conditions if not getattr(e, "_canceled", False)], key=self._conditions.key)
+    # def cleaner(self):
+    #     # Remove all canceled events from the queue
+    #     canceled_events = [e for e in self._queue if getattr(e, "_canceled", False)]
+    #     for event in canceled_events:
+    #         event._in_queue = False
+    #     self._queue = type(self._queue)([e for e in self._queue if not getattr(e, "_canceled", False)], key=self._queue.key)
+    #     self._conditions = type(self._conditions)([e for e in self._conditions if not getattr(e, "_canceled", False)], key=self._conditions.key)
         
 class Context:
     def __enter__(self):
