@@ -456,6 +456,21 @@ def test2():
 def test3():
     env = Environment()
     a = Server(env)
+    b = Buffer(env)
+    q = Queue(env,10)
+    a.connections["next"] = b
+    b.connections["next"] = q
+    env.run(10)
+    x1 = Agent(env,"test1")
+    a.take(x1)
+    env.run(20)
+    x2 = Agent(env,"test2")
+    a.take(x2)
+    env.run(30)
+    
+def test3bis():
+    env = Environment()
+    a = Server(env)
     b = Store(env)
     q = Queue(env,10)
     a.connections["next"] = b
@@ -571,6 +586,7 @@ if __name__ == "__main__":
     test1()
     test2()
     test3()
+    test3bis()
     test4()
     test5()
     test6()
