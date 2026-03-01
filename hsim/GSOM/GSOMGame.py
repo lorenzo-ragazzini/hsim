@@ -471,7 +471,10 @@ def main(filename, folder='', fullpath='',app=True):
         string = folder+'result.xlsx'
 
     # from hsim.core.utils.utils import log
-    # pd.DataFrame.from_dict({k: v for d in [({s.name:s.stateMachine.current_state()[0].name} if len(s.stateMachine.current_state()) > 0 else {s.name:None})  for s in list_stations] for k, v in d.items()}, orient="index", columns=["state"])
+    # log(env)
+    # with open("gantt.html","w") as f:
+    #     f.write(gantt)
+    # df = pd.DataFrame.from_dict({k: v for d in [({s.name:s.stateMachine.current_state()[0].name} if len(s.stateMachine.current_state()) > 0 else {s.name:None})  for s in list_stations] for k, v in d.items()}, orient="index", columns=["state"])
     if app==False or DEBUG:
         writer = pd.ExcelWriter(string, engine = 'xlsxwriter')
         states.to_excel(writer, sheet_name = 'U')
