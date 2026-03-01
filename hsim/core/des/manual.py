@@ -144,7 +144,39 @@ def test3():
     env.run(50)
     pass
 
+def test4():
+    from hsim.core.des.pymulate import Generator
+    env = Environment()
+    g = Generator(env, serviceTime=15)
+    a = ManualStation(env,serviceTime=10)
+    b = Store(env)
+    q = Queue(env,10)
+    op = Operator(env)
+    g.connections["next"] = b    
+    b.connections["next"] = a
+    a.connections["next"] = q
+    op.connections["stations"].append(a)
+    env.run(51)
+    pass
+
+def test5():
+    from hsim.core.des.pymulate import Generator
+    env = Environment()
+    g = Generator(env, serviceTime=5)
+    a = ManualStation(env,serviceTime=10)
+    b = Store(env)
+    q = Queue(env,10)
+    op = Operator(env)
+    g.connections["next"] = b    
+    b.connections["next"] = a
+    a.connections["next"] = q
+    op.connections["stations"].append(a)
+    env.run(51)
+    pass
+
 if __name__ == "__main__":
     test2()
     test3()
+    test4()
+    test5()
     print("Test completed.")
