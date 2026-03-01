@@ -310,6 +310,27 @@ def test6():
     env.run(50)
     assert len(t.store) == 1
     
+    
+def test7():
+    env = Environment()
+    g = Generator(env, Agent, serviceTime=2)
+    s = ServerDoubleBuffer(env, "S", serviceTime=1, inputBufferCapacity=1, outputBufferCapacity=8, inputPorts=1, outputPorts=1)
+    m = ManualStation(env, serviceTime=5)
+    op = Operator(env)
+    q = Queue(env,10)
+    g.connections["next"] = s.input_ports[0]
+    s.output_ports[0].connections["next"] = m
+    m.connections["next"] = q
+    op.connections["stations"].append(m)
+    env.run(10)
+    x = Agent(env,"test")
+    s.take(x)
+    env.run(20)
+    s.take(Agent(env,"test"))
+    env.run(150)
+    assert len(q) == 10 and len(s.OutputBuffer.store) == 3 and s.Server.stateMachine.current_state[0].name == "Starving"
+
+    
 if __name__ == "__main__":
     from hsim.core.des.pymulate import Generator
     from hsim.core.des.manual import Operator
@@ -319,4 +340,5 @@ if __name__ == "__main__":
     test4()
     test5()
     test6()
+    test7()
     print("Tests completed.")
