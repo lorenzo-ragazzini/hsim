@@ -320,7 +320,18 @@ class ObservableVariable(Signal, Observable):
         return popped
     
     def remove(self, element):
-        self.update(lambda x: x.remove(element) or x)
+        try:
+            self.update(lambda x: x.remove(element) or x)
+        except ValueError as e:
+            # fallback for issues with SortedList's remove method, which raises ValueError instead of IndexError when element is not found
+            for i, m in enumerate(self.value): 
+                if m is element: 
+                    self.pop(i)
+                    break
+            else:
+                raise e
+
+            
         
     def extend(self, iterable):
         self.set(self._value + iterable)
