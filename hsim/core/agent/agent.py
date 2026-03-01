@@ -38,6 +38,7 @@ class Agent(ABC):
             name = FSM.__name__ if FSM.__name__ != "FSM" else "stateMachine"
             setattr(self, name, fsm)
             fsm._agent = self
+            setattr(self, 'fsm', fsm) if name == "stateMachine" else None # shorthand for default FSM
     def activate_fsm(self):
         [fsm.start() for fsm in [x for x in self.__dict__.values() if isinstance(x,FSM)] if fsm.startable and not fsm.active]
     def deactivate_fsm(self):
