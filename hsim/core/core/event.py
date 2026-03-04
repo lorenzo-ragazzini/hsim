@@ -87,6 +87,7 @@ class BaseEvent():
             self.env.scheduler._never.remove(self)
             self.time = self.env.now
             self.priority = priority
+            self._in_queue = True  # Mark event as in queue
             self._canceled = False  # Ensure event is not canceled when triggered
             push(self.env.scheduler._queue, self)
     def process(self) -> None:
@@ -110,17 +111,17 @@ class BaseEvent():
     def canceled(self) -> bool:
         return self._canceled
     def __lt__(self, other: BaseEvent) -> bool:
-        return (self.time, self.priority, -self.sequence) < (other.time, other.priority, -other.sequence)
+        return (self.time, self.priority, self.sequence) < (other.time, other.priority, other.sequence)
     def __le__(self, other: BaseEvent) -> bool:
-        return (self.time, self.priority, -self.sequence) <= (other.time, other.priority, -other.sequence)
+        return (self.time, self.priority, self.sequence) <= (other.time, other.priority, other.sequence)
     def __eq__(self, other: BaseEvent) -> bool:
-        return (self.time, self.priority, -self.sequence) == (other.time, other.priority, -other.sequence)
+        return (self.time, self.priority, self.sequence) == (other.time, other.priority, other.sequence)
     def __ne__(self, other: BaseEvent) -> bool:
-        return (self.time, self.priority, -self.sequence) != (other.time, other.priority, -other.sequence)
+        return (self.time, self.priority, self.sequence) != (other.time, other.priority, other.sequence)
     def __gt__(self, other: BaseEvent) -> bool:
-        return (self.time, self.priority, -self.sequence) > (other.time, other.priority, -other.sequence)
+        return (self.time, self.priority, self.sequence) > (other.time, other.priority, other.sequence)
     def __ge__(self, other: BaseEvent) -> bool:
-        return (self.time, self.priority, -self.sequence) >= (other.time, other.priority, -other.sequence)
+        return (self.time, self.priority, self.sequence) >= (other.time, other.priority, other.sequence)
     
     
 class TimedEvent(BaseEvent):

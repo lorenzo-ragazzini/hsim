@@ -453,6 +453,21 @@ def test2():
     a.take(x2)
     env.run(30)
     
+def test2bis():
+    env = Environment()
+    b = Store(env)
+    a = Server(env)
+    q = Queue(env,10)
+    a.connections["next"] = q
+    b.connections["next"] = a
+    env.run(10)
+    x1 = Agent(env,"test1")
+    x2 = Agent(env,"test2")
+    b.take(x1)
+    b.take(x2)
+    env.run(20)
+    env.run(30)
+    
 def test3():
     env = Environment()
     a = Server(env)
@@ -589,8 +604,9 @@ def test8():
     df = pd.DataFrame(data).to_excel("profiler_stats.xlsx", index=False)
     
 if __name__ == "__main__":
-    test1()
-    test2()
+    # test1()
+    # test2()
+    test2bis()
     test3()
     test3bis()
     test4()

@@ -34,12 +34,12 @@ class Queue(MessageQueue):
         
     def take(self, agent:Agent) -> tuple[ConditionedEvent, Message]:
         msg:Message = Message(self.env, content=agent, receiver=self, wait=True)
-        if self.capacity_condition.value:
-            event = ConditionedEvent(self.env, condition=self.capacity_condition).add()
-            # self.env.scheduler.add(event)
-            event.trigger()
-            self._put(msg)
-        else:
+        if True: #self.capacity_condition.value:
+        #     event = ConditionedEvent(self.env, condition=self.capacity_condition).add()
+        #     # self.env.scheduler.add(event)
+        #     event.trigger()
+        #     self._put(msg)
+        # else:
             event = ConditionedEvent(self.env, action=self._put, condition=self.capacity_condition, arguments=(msg,)).add()
             self._inbound[msg] = event
         return event, msg

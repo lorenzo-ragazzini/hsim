@@ -15,7 +15,7 @@ from hsim.core.fsm.FSM import FSM
 from hsim.core.core.env import Environment
 from hsim.core.agent.agent import Agent, FSM
 from warnings import warn
-from hsim.core.des.pymulate import Server, Store
+from hsim.core.des.pymulate import Buffer, Server, Store
 from hsim.core.core.obs import ObservableVariable, ObservableCollection, ObservableExpression, ObservableProxy
 
 class ManualStation(Server):
@@ -90,27 +90,20 @@ class Operator(Agent):
         
    
 def test1():
-    print("Test 1 was for previous version of Obs")
-    return
     env = Environment()
-    a = ManualStation(env,serviceTime=10)
     b = Store(env)
+    m = Server(env,serviceTime=10)
     q = Queue(env,10)
     op = Operator(env)    
-    a.connections["next"] = b
-    b.connections["next"] = q
-    op.connections["stations"].append(a)
-    c1 = (a.connections["operator"] != None)
-    c1.add_environment(env)
-    lst = [c1 | (ObservableProxy(a.stateMachine.current_state).item(0).attr("name") == "Idle") for a in op.connections["stations"]]
-    u = ObservableExpression.any(lst)
-    a.stateMachine.start()
-    env.run(10)
-    x1 = Agent(env,"test1")
-    a.take(x1)
+    b.connections["next"] = m
+    m.connections["next"] = q
+    # op.connections["stations"].append(m)
+    env.run(5)
+    x1, x2, x3 = Agent(env,"test1"),  Agent(env,"test2"),  Agent(env,"test3")
+    b.take(x1), b.take(x2), b.take(x3)
     env.run(20)
     # a.stateMachine.receiveContent("operator enters")
-    env.run(30)
+    env.run(100)
     
     x2 = Agent(env,"test2")
     a.take(x2)
@@ -175,6 +168,7 @@ def test5():
     pass
 
 if __name__ == "__main__":
+    test1()
     test2()
     test3()
     test4()

@@ -11,6 +11,12 @@
             "module": "hsim.core.des.pymulate"
         },
         {
+            "name": "Python Debugger: hsim.core.des.resources",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "hsim.core.des.resources"
+        },
+        {
             "name": "Python Debugger: hsim.core.des.manual",
             "type": "debugpy",
             "request": "launch",

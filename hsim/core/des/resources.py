@@ -314,12 +314,14 @@ def test6():
 def test7():
     env = Environment()
     g = Generator(env, Agent, serviceTime=2)
-    s = ServerDoubleBuffer(env, "S", serviceTime=1, inputBufferCapacity=1, outputBufferCapacity=8, inputPorts=1, outputPorts=1)
+    s = ServerDoubleBuffer(env, "S", serviceTime=1, inputBufferCapacity=1, outputBufferCapacity=12, inputPorts=1, outputPorts=1)
+    b = Buffer(env)
     m = ManualStation(env, serviceTime=5)
     op = Operator(env)
     q = Queue(env,10)
     g.connections["next"] = s.input_ports[0]
-    s.output_ports[0].connections["next"] = m
+    s.output_ports[0].connections["next"] = b
+    b.connections["next"] = m
     m.connections["next"] = q
     op.connections["stations"].append(m)
     env.run(10)

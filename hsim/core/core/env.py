@@ -60,9 +60,6 @@ class Scheduler():
         delayfunc, timefunc, lock, past = self.delayfunc, self.timefunc, self._lock, self._past
         while self._queue:
             event = pop(self._queue)
-            from hsim.core.core.msg import Message
-            if len(event.arguments) > 0 and isinstance(event.arguments[0], Message):
-                pass
             event._in_queue = False
             if len(self._queue) < 3:
                 pass
