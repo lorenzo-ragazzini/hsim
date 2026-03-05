@@ -23,6 +23,19 @@ from sortedcontainers import SortedList
 from hsim.core.core.event import BaseEvent, RecurringEvent, Status
 from hsim.core.core.obs import ObservableVariable, ObservableExpression
 
+# Recorder import (moved to top)
+try:
+    from hsim.core.debug.sequence_recorder import get_recorder
+except Exception:
+    def get_recorder():
+        class _Dummy:
+            def record_message_send(self, *a, **k): pass
+            def record_message_received(self, *a, **k): pass
+            def record_message_read(self, *a, **k): pass
+            def record_event_trigger(self, *a, **k): pass
+            def record_event_execute(self, *a, **k): pass
+        return _Dummy()
+
 class Message():
     # __slots__ = ('env', 'content', 'receiver', 'sender', 'status', 'receipts')
     def __init__(self, env, content:Any=None, receiver:'MessageQueue'=None, sender=None, wait=False):
@@ -38,6 +51,10 @@ class Message():
     def send(self, receiver=None):
         receiver = receiver if receiver else self.receiver
         if receiver:
+            try:
+                get_recorder().record_message_send(self, receiver)
+            except Exception:
+                pass
             receiver.receive(self)
         else:
             raise ValueError("No receiver specified")
@@ -55,8 +72,16 @@ class Message():
     def _on_read(self):
         pass
     def receive(self):
+        try:
+            get_recorder().record_message_received(self)
+        except Exception:
+            pass
         self.receipts["received"].trigger()
     def read(self):
+        try:
+            get_recorder().record_message_read(self)
+        except Exception:
+            pass
         self.receipts["read"].trigger()
     def reset(self):
         self.receipts["received"].reset()

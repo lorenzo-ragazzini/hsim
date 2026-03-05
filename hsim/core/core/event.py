@@ -20,6 +20,19 @@ from typing import Any, Callable, Iterable, List, Optional, Union
 from heapq import heappush as push, heappop as pop
 import numpy as np
 
+# Recorder import (moved to top)
+try:
+    from hsim.core.debug.sequence_recorder import get_recorder
+except Exception:
+    def get_recorder():
+        class _Dummy:
+            def record_message_send(self, *a, **k): pass
+            def record_message_received(self, *a, **k): pass
+            def record_message_read(self, *a, **k): pass
+            def record_event_trigger(self, *a, **k): pass
+            def record_event_execute(self, *a, **k): pass
+        return _Dummy()
+
 class Status(Enum):
     PENDING = auto()
     SCHEDULED = auto()
@@ -83,6 +96,10 @@ class BaseEvent():
         return self
     def trigger(self,priority=0) -> None:
         self._status = Status.TRIGGERED
+        try:
+            get_recorder().record_event_trigger(self)
+        except Exception:
+            pass
         if self.time == np.inf:
             self.env.scheduler._never.remove(self)
             self.time = self.env.now

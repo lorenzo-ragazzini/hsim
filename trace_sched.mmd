@@ -1,0 +1,76 @@
+flowchart LR
+    %% --- Time axis spine (invisible nodes) ---
+    T0(["t=10.0"]) -.-> 
+    T1(["t=11.0"]) -.-> 
+    T2(["t=20.0"]) -.-> 
+    T3(["t=21.0"]) -.-> 
+
+    %% --- Events pinned to their timestamp ---
+    T0 --- E3["Queue — execute _put"]
+    T0 --- E7["Queue — execute _on_receive"]
+    T0 --- E10["Message — execute _on_received"]
+    T0 --- E11["Queue — execute _put"]
+    T0 --- E15["Queue — execute _on_receive"]
+    T0 --- E18["Message — execute _on_received"]
+    T0 --- E19["Queue — execute _put"]
+    T0 --- E23["Queue — execute _on_receive"]
+    T0 --- E25["Queue — execute pull"]
+    T1 --- E26["Server — Working→Blocking — execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f419d5bfb0>"]
+    T1 --- E28["Queue — execute _put"]
+    T1 --- E32["Queue — execute _on_receive"]
+    T1 --- E34["Server — Blocking→Starving — execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f4175aeba0>"]
+    T1 --- E37["Message — execute _on_read"]
+    T0 --- E39["Queue — execute _put"]
+    T0 --- E43["Queue — execute _on_receive"]
+    T0 --- E45["Message — execute _on_received"]
+    T1 --- E46["Server — Working→Blocking — execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f416a1f530>"]
+    T1 --- E48["Queue — execute _put"]
+    T1 --- E52["Queue — execute _on_receive"]
+    T1 --- E55["Server — Blocking→Starving — execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f416a1f560>"]
+    T1 --- E58["Message — execute _on_read"]
+    T1 --- E59["Queue — execute _put"]
+    T1 --- E63["Queue — execute _on_receive"]
+    T1 --- E65["Buffer — Blocking→Starving — execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f417fc94c0>"]
+    T1 --- E68["Message — execute _on_read"]
+    T2 --- E70["Queue — execute _put"]
+    T2 --- E74["Queue — execute _on_receive"]
+    T2 --- E76["Message — execute _on_received"]
+    T3 --- E77["Server — Working→Blocking — execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f416a1f530>"]
+    T3 --- E79["Queue — execute _put"]
+    T3 --- E83["Queue — execute _on_receive"]
+    T3 --- E86["Server — Blocking→Starving — execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f416a1f560>"]
+    T3 --- E89["Message — execute _on_read"]
+    T3 --- E90["Queue — execute _put"]
+    T3 --- E94["Queue — execute _on_receive"]
+    T3 --- E96["Buffer — Blocking→Starving — execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f417fc94c0>"]
+    T3 --- E99["Message — execute _on_read"]
+
+    %% --- Causal / trigger edges ---
+    E7 -->|triggers| E10
+    E10 -->|triggers| E11
+    E15 -->|triggers| E18
+    E18 -->|triggers| E19
+    E23 -->|triggers| E25
+    E25 -->|triggers| E26
+    E26 -->|triggers| E28
+    E32 -->|triggers| E34
+    E37 -->|triggers| E39
+    E43 -->|triggers| E45
+    E45 -->|triggers| E46
+    E46 -->|triggers| E48
+    E52 -->|triggers| E55
+    E58 -->|triggers| E59
+    E63 -->|triggers| E65
+    E68 -->|triggers| E70
+    E74 -->|triggers| E76
+    E76 -->|triggers| E77
+    E77 -->|triggers| E79
+    E83 -->|triggers| E86
+    E89 -->|triggers| E90
+    E94 -->|triggers| E96
+
+    %% --- Style the spine differently ---
+    style T0 fill:#e0e0e0,stroke:#999,color:#555
+    style T1 fill:#e0e0e0,stroke:#999,color:#555
+    style T2 fill:#e0e0e0,stroke:#999,color:#555
+    style T3 fill:#e0e0e0,stroke:#999,color:#555

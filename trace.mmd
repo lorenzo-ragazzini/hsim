@@ -1,0 +1,49 @@
+sequenceDiagram
+    participant Message
+    participant Queue
+    participant Queue_1__133134458636768__Store_
+    participant Queue_2__133134458641184__Server_
+    participant Server
+    participant Queue_3
+    participant Queue_4__133133692018880__Server_
+    participant Queue_5__133133692019936__Buffer_
+    participant Queue_6
+    participant Buffer
+    Queue->>Queue: execute _put [10.0]
+    Queue->>Queue: execute _on_receive [10.0]
+    Message->>Message: execute _on_received [10.0]
+    Queue->>Queue: execute _put [10.0]
+    Queue->>Queue: execute _on_receive [10.0]
+    Message->>Message: execute _on_received [10.0]
+    Queue->>Queue: execute _put [10.0]
+    Queue->>Queue: execute _on_receive [10.0]
+    Queue->>Queue: execute pull [10.0]
+    Server->>Server: Working->Blocking [11.0]
+    Queue->>Queue: execute _put [11.0]
+    Queue->>Queue: execute _on_receive [11.0]
+    Server->>Server: Blocking->Starving [11.0]
+    Message->>Message: execute _on_read [11.0]
+    Queue->>Queue: execute _put [10.0]
+    Queue->>Queue: execute _on_receive [10.0]
+    Message->>Message: execute _on_received [10.0]
+    Server->>Server: Working->Blocking [11.0]
+    Queue->>Queue: execute _put [11.0]
+    Queue->>Queue: execute _on_receive [11.0]
+    Server->>Server: Blocking->Starving [11.0]
+    Message->>Message: execute _on_read [11.0]
+    Queue->>Queue: execute _put [11.0]
+    Queue->>Queue: execute _on_receive [11.0]
+    Buffer->>Buffer: Blocking->Starving [11.0]
+    Message->>Message: execute _on_read [11.0]
+    Queue->>Queue: execute _put [20.0]
+    Queue->>Queue: execute _on_receive [20.0]
+    Message->>Message: execute _on_received [20.0]
+    Server->>Server: Working->Blocking [21.0]
+    Queue->>Queue: execute _put [21.0]
+    Queue->>Queue: execute _on_receive [21.0]
+    Server->>Server: Blocking->Starving [21.0]
+    Message->>Message: execute _on_read [21.0]
+    Queue->>Queue: execute _put [21.0]
+    Queue->>Queue: execute _on_receive [21.0]
+    Buffer->>Buffer: Blocking->Starving [21.0]
+    Message->>Message: execute _on_read [21.0]

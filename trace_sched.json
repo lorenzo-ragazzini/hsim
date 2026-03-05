@@ -1,0 +1,464 @@
+{
+  "nodes": [
+    {
+      "id": "E3",
+      "time": 10.0,
+      "label": "Queue \u2014 execute _put",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 3
+    },
+    {
+      "id": "E7",
+      "time": 10.0,
+      "label": "Queue \u2014 execute _on_receive",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 8
+    },
+    {
+      "id": "E10",
+      "time": 10.0,
+      "label": "Message \u2014 execute _on_received",
+      "owner": "Message",
+      "src_state": null,
+      "dst_state": null,
+      "index": 11
+    },
+    {
+      "id": "E11",
+      "time": 10.0,
+      "label": "Queue \u2014 execute _put",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 13
+    },
+    {
+      "id": "E15",
+      "time": 10.0,
+      "label": "Queue \u2014 execute _on_receive",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 18
+    },
+    {
+      "id": "E18",
+      "time": 10.0,
+      "label": "Message \u2014 execute _on_received",
+      "owner": "Message",
+      "src_state": null,
+      "dst_state": null,
+      "index": 21
+    },
+    {
+      "id": "E19",
+      "time": 10.0,
+      "label": "Queue \u2014 execute _put",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 23
+    },
+    {
+      "id": "E23",
+      "time": 10.0,
+      "label": "Queue \u2014 execute _on_receive",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 28
+    },
+    {
+      "id": "E25",
+      "time": 10.0,
+      "label": "Queue \u2014 execute pull",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 30
+    },
+    {
+      "id": "E26",
+      "time": 11.0,
+      "label": "Server \u2014 Working\u2192Blocking \u2014 execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f419d5bfb0>",
+      "owner": "Server",
+      "src_state": "Working",
+      "dst_state": "Blocking",
+      "index": 32
+    },
+    {
+      "id": "E28",
+      "time": 11.0,
+      "label": "Queue \u2014 execute _put",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 35
+    },
+    {
+      "id": "E32",
+      "time": 11.0,
+      "label": "Queue \u2014 execute _on_receive",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 40
+    },
+    {
+      "id": "E34",
+      "time": 11.0,
+      "label": "Server \u2014 Blocking\u2192Starving \u2014 execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f4175aeba0>",
+      "owner": "Server",
+      "src_state": "Blocking",
+      "dst_state": "Starving",
+      "index": 42
+    },
+    {
+      "id": "E37",
+      "time": 11.0,
+      "label": "Message \u2014 execute _on_read",
+      "owner": "Message",
+      "src_state": null,
+      "dst_state": null,
+      "index": 46
+    },
+    {
+      "id": "E39",
+      "time": 10.0,
+      "label": "Queue \u2014 execute _put",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 49
+    },
+    {
+      "id": "E43",
+      "time": 10.0,
+      "label": "Queue \u2014 execute _on_receive",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 54
+    },
+    {
+      "id": "E45",
+      "time": 10.0,
+      "label": "Message \u2014 execute _on_received",
+      "owner": "Message",
+      "src_state": null,
+      "dst_state": null,
+      "index": 56
+    },
+    {
+      "id": "E46",
+      "time": 11.0,
+      "label": "Server \u2014 Working\u2192Blocking \u2014 execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f416a1f530>",
+      "owner": "Server",
+      "src_state": "Working",
+      "dst_state": "Blocking",
+      "index": 58
+    },
+    {
+      "id": "E48",
+      "time": 11.0,
+      "label": "Queue \u2014 execute _put",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 61
+    },
+    {
+      "id": "E52",
+      "time": 11.0,
+      "label": "Queue \u2014 execute _on_receive",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 66
+    },
+    {
+      "id": "E55",
+      "time": 11.0,
+      "label": "Server \u2014 Blocking\u2192Starving \u2014 execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f416a1f560>",
+      "owner": "Server",
+      "src_state": "Blocking",
+      "dst_state": "Starving",
+      "index": 69
+    },
+    {
+      "id": "E58",
+      "time": 11.0,
+      "label": "Message \u2014 execute _on_read",
+      "owner": "Message",
+      "src_state": null,
+      "dst_state": null,
+      "index": 73
+    },
+    {
+      "id": "E59",
+      "time": 11.0,
+      "label": "Queue \u2014 execute _put",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 75
+    },
+    {
+      "id": "E63",
+      "time": 11.0,
+      "label": "Queue \u2014 execute _on_receive",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 80
+    },
+    {
+      "id": "E65",
+      "time": 11.0,
+      "label": "Buffer \u2014 Blocking\u2192Starving \u2014 execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f417fc94c0>",
+      "owner": "Buffer",
+      "src_state": "Blocking",
+      "dst_state": "Starving",
+      "index": 82
+    },
+    {
+      "id": "E68",
+      "time": 11.0,
+      "label": "Message \u2014 execute _on_read",
+      "owner": "Message",
+      "src_state": null,
+      "dst_state": null,
+      "index": 86
+    },
+    {
+      "id": "E70",
+      "time": 20.0,
+      "label": "Queue \u2014 execute _put",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 89
+    },
+    {
+      "id": "E74",
+      "time": 20.0,
+      "label": "Queue \u2014 execute _on_receive",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 94
+    },
+    {
+      "id": "E76",
+      "time": 20.0,
+      "label": "Message \u2014 execute _on_received",
+      "owner": "Message",
+      "src_state": null,
+      "dst_state": null,
+      "index": 96
+    },
+    {
+      "id": "E77",
+      "time": 21.0,
+      "label": "Server \u2014 Working\u2192Blocking \u2014 execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f416a1f530>",
+      "owner": "Server",
+      "src_state": "Working",
+      "dst_state": "Blocking",
+      "index": 98
+    },
+    {
+      "id": "E79",
+      "time": 21.0,
+      "label": "Queue \u2014 execute _put",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 101
+    },
+    {
+      "id": "E83",
+      "time": 21.0,
+      "label": "Queue \u2014 execute _on_receive",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 106
+    },
+    {
+      "id": "E86",
+      "time": 21.0,
+      "label": "Server \u2014 Blocking\u2192Starving \u2014 execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f416a1f560>",
+      "owner": "Server",
+      "src_state": "Blocking",
+      "dst_state": "Starving",
+      "index": 109
+    },
+    {
+      "id": "E89",
+      "time": 21.0,
+      "label": "Message \u2014 execute _on_read",
+      "owner": "Message",
+      "src_state": null,
+      "dst_state": null,
+      "index": 113
+    },
+    {
+      "id": "E90",
+      "time": 21.0,
+      "label": "Queue \u2014 execute _put",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 115
+    },
+    {
+      "id": "E94",
+      "time": 21.0,
+      "label": "Queue \u2014 execute _on_receive",
+      "owner": "Queue",
+      "src_state": null,
+      "dst_state": null,
+      "index": 120
+    },
+    {
+      "id": "E96",
+      "time": 21.0,
+      "label": "Buffer \u2014 Blocking\u2192Starving \u2014 execute <hsim.core.fsm.transitions.Transition.define.<locals>.Transition object at 0x79f417fc94c0>",
+      "owner": "Buffer",
+      "src_state": "Blocking",
+      "dst_state": "Starving",
+      "index": 122
+    },
+    {
+      "id": "E99",
+      "time": 21.0,
+      "label": "Message \u2014 execute _on_read",
+      "owner": "Message",
+      "src_state": null,
+      "dst_state": null,
+      "index": 126
+    }
+  ],
+  "edges": [
+    {
+      "source": "E7",
+      "target": "E10",
+      "type": "triggers"
+    },
+    {
+      "source": "E10",
+      "target": "E11",
+      "type": "triggers"
+    },
+    {
+      "source": "E15",
+      "target": "E18",
+      "type": "triggers"
+    },
+    {
+      "source": "E18",
+      "target": "E19",
+      "type": "triggers"
+    },
+    {
+      "source": "E23",
+      "target": "E25",
+      "type": "triggers"
+    },
+    {
+      "source": "E25",
+      "target": "E26",
+      "type": "triggers"
+    },
+    {
+      "source": "E26",
+      "target": "E28",
+      "type": "triggers"
+    },
+    {
+      "source": "E32",
+      "target": "E34",
+      "type": "triggers"
+    },
+    {
+      "source": "E37",
+      "target": "E39",
+      "type": "triggers"
+    },
+    {
+      "source": "E43",
+      "target": "E45",
+      "type": "triggers"
+    },
+    {
+      "source": "E45",
+      "target": "E46",
+      "type": "triggers"
+    },
+    {
+      "source": "E46",
+      "target": "E48",
+      "type": "triggers"
+    },
+    {
+      "source": "E52",
+      "target": "E55",
+      "type": "triggers"
+    },
+    {
+      "source": "E58",
+      "target": "E59",
+      "type": "triggers"
+    },
+    {
+      "source": "E63",
+      "target": "E65",
+      "type": "triggers"
+    },
+    {
+      "source": "E68",
+      "target": "E70",
+      "type": "triggers"
+    },
+    {
+      "source": "E74",
+      "target": "E76",
+      "type": "triggers"
+    },
+    {
+      "source": "E76",
+      "target": "E77",
+      "type": "triggers"
+    },
+    {
+      "source": "E77",
+      "target": "E79",
+      "type": "triggers"
+    },
+    {
+      "source": "E83",
+      "target": "E86",
+      "type": "triggers"
+    },
+    {
+      "source": "E89",
+      "target": "E90",
+      "type": "triggers"
+    },
+    {
+      "source": "E94",
+      "target": "E96",
+      "type": "triggers"
+    }
+  ],
+  "spine_times": [
+    10.0,
+    11.0,
+    20.0,
+    21.0
+  ]
+}

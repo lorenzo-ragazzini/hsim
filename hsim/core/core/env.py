@@ -21,6 +21,19 @@ import numpy as np
 from hsim.core.core.event import BaseEvent as Event, Status
 from hsim.core.core.event import TimedEvent
 
+# Recorder import (moved to top)
+try:
+    from hsim.core.debug.sequence_recorder import get_recorder
+except Exception:
+    def get_recorder():
+        class _Dummy:
+            def record_message_send(self, *a, **k): pass
+            def record_message_received(self, *a, **k): pass
+            def record_message_read(self, *a, **k): pass
+            def record_event_trigger(self, *a, **k): pass
+            def record_event_execute(self, *a, **k): pass
+        return _Dummy()
+
 DEBUG = False
 
 
@@ -99,6 +112,12 @@ class Scheduler():
         Args:
             event: Event to execute
         """
+        # Record execution using recorder
+        try:
+            get_recorder().record_event_execute(event)
+        except Exception:
+            pass
+
         if callable(event.action):
             try:
                 event.action(*event.arguments, **event.kwargs)

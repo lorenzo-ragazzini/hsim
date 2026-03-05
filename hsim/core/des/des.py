@@ -66,6 +66,7 @@ class DESBlock(DESBase):
         super().__init__(env,name)
         self.store = createQueue(env,capacity,queueType)
         self.store.on_receive = self.on_receive 
+        self.store._desBlock = self
         
             
 class TimedBlock(Agent):
