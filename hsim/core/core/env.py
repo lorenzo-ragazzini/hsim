@@ -11,7 +11,7 @@ if __name__ == "__main__":
             sys.path.append(hsim_path)
 
     
-from sortedcontainers import SortedList
+import heapq
 import time
 from typing import Any, Callable, Optional, Union
 from collections import OrderedDict
@@ -29,15 +29,29 @@ class Scheduler():
         self._lock = Context()
         self._past = list()
         self._env = env
-        self._queue = SortedList(key=lambda event: (event.time, event.priority, -event.sequence))
-        self._conditions = SortedList(key=lambda event: (event.time, event.priority, event.sequence))
+        self._queue = []                   # heapq: (time, priority, neg_sequence, event)
+        self._waiting = {}                 # dict[id(event) -> event], for time==inf events
         self._sequence_generator = Counter()
         self.timefunc = timefunc
         self.delayfunc = delayfunc
     def enter(self, event: 'Event') -> 'Event':
-        self._queue.add(event)
         event._in_queue = True
+        if event.time == np.inf:
+            self._waiting[id(event)] = event
+        else:
+            heapq.heappush(self._queue, (event.time, event.priority, -event.sequence, event))
         return event
+    def remove(self, event: 'Event') -> None:
+        """Remove event from whichever collection it's in. Call BEFORE mutating event.time."""
+        if not event._in_queue:
+            return
+        if event.time == np.inf:
+            self._waiting.pop(id(event), None)
+        else:
+            # O(n) — only called for rescheduling, not hot path
+            self._queue = [(t, p, s, e) for t, p, s, e in self._queue if e is not event]
+            heapq.heapify(self._queue)
+        event._in_queue = False
     def enterabs(self, time, priority, action=object, argument=(), kwargs={}) -> 'Event':
         return self.enter(TimedEvent(self._env, time, priority, action, argument, **kwargs))
     def delay(self, delay, priority, action=object, argument=(), kwargs={}) -> 'Event':
@@ -47,7 +61,7 @@ class Scheduler():
     def run(self, blocking=True):
         delayfunc, timefunc, lock, past = self.delayfunc, self.timefunc, self._lock, self._past
         while self._queue:
-            event = self._queue.pop(0)
+            _, _, _, event = heapq.heappop(self._queue)
             event._in_queue = False
             if getattr(event, "_canceled", False):
                 continue
@@ -71,12 +85,6 @@ class Scheduler():
                 # delayfunc(0)
                 past.append(event)
                 event.process()
-            # Only check conditioned events in the queue
-            self.check_conditioned_events()
-    def check_conditioned_events(self):
-        for cond_event in self._conditions:
-            if not getattr(cond_event, "_canceled", False) and cond_event.verify():
-                break
     def execute(self,event):
         """
         Execute event action(s).
@@ -118,11 +126,11 @@ class Scheduler():
 
     def cleaner(self):
         # Remove all canceled events from the queue
-        canceled_events = [e for e in self._queue if getattr(e, "_canceled", False)]
-        for event in canceled_events:
-            event._in_queue = False
-        self._queue = type(self._queue)([e for e in self._queue if not getattr(e, "_canceled", False)], key=self._queue.key)
-        self._conditions = type(self._conditions)([e for e in self._conditions if not getattr(e, "_canceled", False)], key=self._conditions.key)
+        self._queue = [(t, p, s, e) for t, p, s, e in self._queue
+                       if not getattr(e, "_canceled", False)]
+        heapq.heapify(self._queue)
+        self._waiting = {k: e for k, e in self._waiting.items()
+                         if not getattr(e, "_canceled", False)}
         
 class Context:
     def __enter__(self):
