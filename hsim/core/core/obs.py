@@ -2,6 +2,11 @@ from abc import ABC, abstractmethod
 from typing import Any, Callable, Iterable, Optional, Type, Union
 from reaktiv import Signal, ComputeSignal, Effect
 import operator
+# Pre-import scipy to avoid import-time signature inspection issues before our patches
+try:
+    import scipy.stats
+except ImportError:
+    pass
 
 # Monkey-patch Reaktiv's Signal.get() to avoid expensive f-string evaluation in debug_log
 # The issue: debug_log(f"...{self._value}") evaluates the f-string even when debugging is disabled,
@@ -68,6 +73,29 @@ def _patched_signal_set(self, new_value):
 
 Signal.set = _patched_signal_set
 
+# Cache for inspect.signature results to avoid repeated expensive introspection
+# This is safe because function signatures don't change during runtime
+_signature_cache = {}
+_original_inspect_signature = None
+
+def _get_cached_signature(obj):
+    """Get signature with caching by object id."""
+    obj_id = id(obj)
+    if obj_id not in _signature_cache:
+        _signature_cache[obj_id] = _original_inspect_signature(obj)
+    return _signature_cache[obj_id]
+
+# Monkey-patch inspect.signature AFTER module initialization
+# This avoids interfering with scipy's module-import-time signature introspection
+_patch_applied = False
+def _apply_signature_cache_patch():
+    """Delay patch application until after scipy loads."""
+    global _patch_applied, _original_inspect_signature
+    if not _patch_applied:
+        import inspect as _inspect_module
+        _original_inspect_signature = _inspect_module.signature
+        _inspect_module.signature = _get_cached_signature
+        _patch_applied = True
 
 
 class Observable(ABC):
@@ -80,7 +108,8 @@ class Observable(ABC):
     def add_environment(self, env) -> None:
         self._env = env
         
-    def link(self, event): 
+    def link(self, event):
+        _apply_signature_cache_patch()  # Apply patch at first runtime use, not import time
         self._event = event
         self._effect = Effect(lambda: event.trigger() if self() else event.reset())  # Dummy effect to trigger updates
 

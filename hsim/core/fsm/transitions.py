@@ -54,15 +54,14 @@ class Transition:
             setattr(obj, key, value)
         return obj
     def __getattr__(self, name: str) -> Any:
+        # __getattr__ is only called when normal attribute lookup fails.
+        # Optimize by avoiding redundant object.__getattribute__ call which always fails.
+        if name == 'fsm' or name.startswith('__'):
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
         try:
-            return object.__getattribute__(self,name)
-        except AttributeError as e1:
-            if name == 'fsm' or name[:2] == "__":
-                raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'") from e1
-            try:
-                return getattr(object.__getattribute__(self,'_fsm'),name)
-            except AttributeError as e2:
-                raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'") from e2
+            return getattr(object.__getattribute__(self, '_fsm'), name)
+        except AttributeError as e:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'") from e
 
         
 class TimeoutTransition(Transition):

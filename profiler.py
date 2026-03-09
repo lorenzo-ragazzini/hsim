@@ -6,7 +6,7 @@ import pandas as pd
 
 filename = r"data/profiler/GSOM_original.xlsx"
 
-if 1:
+if 0:
     from time import time
     t = time()
     main(filename=filename, app=True)

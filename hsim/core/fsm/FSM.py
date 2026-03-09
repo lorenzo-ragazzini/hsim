@@ -102,15 +102,14 @@ class FSM:
         d.update({state.name: state for state in self._pseudostates})
         return d
     def __getattr__(self, name: str) -> Any:
+        # __getattr__ is only called when normal attribute lookup fails.
+        # Optimize by avoiding redundant object.__getattribute__ call which always fails.
+        if name == '_agent' or name.startswith('__'):
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
         try:
-            return object.__getattribute__(self,name)
-        except AttributeError as e1:
-            if name == '_agent' or name[:2] == "__":
-                raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'") from e1
-            try:
-                return getattr(object.__getattribute__(self,'_agent'),name)
-            except AttributeError as e2:
-                raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'") from e2
+            return getattr(object.__getattribute__(self, '_agent'), name)
+        except AttributeError as e:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'") from e
 
     def log_state_entry(self, state):
         self._state_history.append((state.name, True, self._env.now))
