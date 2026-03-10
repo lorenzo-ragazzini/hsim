@@ -11,7 +11,7 @@ from typing import Any, Iterable, List, Type, Union
 import pandas as pd
 
 from hsim.core.core.msg import Message, MessageQueue
-from hsim.core.core.obs import ObservableExpression
+from hsim.core.core.obs import ObservableExpression, ObservableVariable
 
 class FSM:
     def __init__(self, env):
@@ -27,7 +27,7 @@ class FSM:
         self.add_element(get_class_dict(self, Pseudostate))
         self.add_element(get_class_dict(self, Transition))
         self.active, self.startable, self.stoppable = False, True, True
-        self._current_state = ObservableExpression(lambda: [t for t in self._states if t._active()])
+        self._current_state = ObservableVariable(list())
     def start(self):
         for state in self._states:
             state.start() if state.initial_state else None
@@ -113,18 +113,18 @@ class FSM:
 
     def log_state_entry(self, state):
         self._state_history.append((state.name, True, self._env.now))
-        # Efficiently update current state without O(N) evaluation over all states
-        cur = list(self._current_state.value)
+        # Direct access to _value bypasses all observability overhead in hot path
+        cur = self._current_state._value
         if state not in cur:
-            cur.append(state)
-            self._current_state.set(cur)
+            # We must still call .set() or update to trigger downstream effects if any
+            self._current_state.set(cur + [state])
             
     def log_state_exit(self, state):
         self._state_history.append((state.name, False, self._env.now))
-        cur = list(self._current_state.value)
+        cur = self._current_state._value
         if state in cur:
-            cur.remove(state)
-            self._current_state.set(cur)
+            new_cur = [s for s in cur if s is not state]
+            self._current_state.set(new_cur)
     def log_transition(self, source, target):
         self._transition_history.append((source.name, target.name, self._env.now))
 

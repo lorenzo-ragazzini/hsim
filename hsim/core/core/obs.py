@@ -13,11 +13,11 @@ except ImportError:
 # causing __repr__() to be called on SortedList values (~125k times), consuming ~9 seconds
 _original_signal_get = Signal.get
 
+from reaktiv import graph
+from reaktiv.signal import ComputeSignal
+from reaktiv._debug import _debug_enabled
 def _patched_signal_get(self):
     """Optimized Signal.get() that avoids f-string evaluation when debug logging is disabled."""
-    from reaktiv._debug import _debug_enabled
-    from reaktiv import graph
-
     if self._lock is not None:
         with self._lock:
             edge = graph.add_dependency(self)
@@ -44,18 +44,12 @@ Signal.get = _patched_signal_get
 _original_signal_set = Signal.set
 
 def _patched_signal_set(self, new_value):
-    """Optimized Signal.set() that avoids f-string evaluation when debug logging is disabled."""
-    from reaktiv._debug import _debug_enabled
-
     # Only format debug message if debugging is actually enabled
     if _debug_enabled:
         from reaktiv._debug import debug_log
         debug_log(f"Signal set() called with new_value: {new_value} (old_value: {self._value})")
 
     # Call original _set_internal logic
-    from reaktiv import graph
-    from reaktiv.signal import ComputeSignal
-
     # Disallow side effects from within a ComputeSignal's computation
     active = graph.active_consumer.get()
     if active is not None:
@@ -103,8 +97,17 @@ class Observable(ABC):
     @property
     def value(self):
         """Backward compatibility - delegate to Reaktiv's call syntax"""
-        return self()  # Signal.__call__ returns _value
+        return self._get_value()
     
+    def _get_value(self):
+        """Bypass Reaktiv graph evaluation if not in a reactive context."""
+        # Only bypass for simple Signals, not ComputeSignals (Expressions)
+        # which need to check for stale dependencies.
+        if graph.active_consumer.get() is None and not isinstance(self, ComputeSignal):
+            if hasattr(self, '_value'):
+                return self._value
+        return self()  # Fallback to reactive Signal.get() / ComputeSignal()
+
     def add_environment(self, env) -> None:
         self._env = env
         
@@ -228,14 +231,17 @@ class Observable(ABC):
     
     def __bool__(self):
         """Return True if the observable's value is truthy, False otherwise."""
-        return bool(self())
+        return bool(self._get_value())
     
     def __len__(self):
-        if not hasattr(self(), "__len__"):
+        val = self._get_value()
+        if val is None:
+            return 0
+        if not hasattr(val, "__len__"):
             # raise TypeError(f"object of type '{type(self.value).__name__}' has no len()")
-            print(f"Warning: object of type '{type(self.value).__name__}' has no len(), returning 0")
-            return self()
-        return len(self())
+            # print(f"Warning: object of type '{type(val).__name__}' has no len(), returning 0")
+            return 0
+        return len(val)
 
     @staticmethod
     def any(*predicate: 'Observable') -> 'ObservableExpression':
@@ -255,7 +261,7 @@ class Observable(ABC):
         return hash(id(self))
     
     def __getitem__(self, key):
-        return self()[key]
+        return self._get_value()[key]
     
     def proxy(self, accessor: Any = None, attr_name: str = None) -> 'ObservableProxy':
         """
@@ -317,7 +323,7 @@ class ObservableVariable(Signal, Observable):
     @property
     def value(self):
         """Backward compatibility - delegate to Reaktiv's call syntax"""
-        return self()  # Signal.__call__ returns _value
+        return self._get_value()
 
     @value.setter
     def value(self, new_value):
