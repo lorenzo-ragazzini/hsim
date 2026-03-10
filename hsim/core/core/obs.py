@@ -270,12 +270,34 @@ class Observable(ABC):
 
 class ObservableExpression(ComputeSignal, Observable):
     def __init__(self, op: Callable, *operands: Union['ObservableVariable','ObservableExpression'],env=None):
-        if op in [all, any]:
-            super().__init__(lambda: op([operand() if isinstance(operand, (ObservableVariable, ObservableExpression)) else operand for operand in operands[0]]))
+        if getattr(op, "__name__", "") in ["all", "any"] or op in [all, any]:
+            # For all/any, the first operand is usually a list of elements
+            # Let's write an optimized evaluation that avoids isinstance inside the lambda
+            items = operands[0]
+            if isinstance(items, (list, tuple)):
+                is_obs = [isinstance(item, (ObservableVariable, ObservableExpression)) for item in items]
+                
+                def _eval_all_any():
+                    res = []
+                    for i, item in enumerate(items):
+                        res.append(item() if is_obs[i] else item)
+                    return op(res)
+                
+                super().__init__(_eval_all_any)
+            else:
+                super().__init__(lambda: op([operand() if isinstance(operand, (ObservableVariable, ObservableExpression)) else operand for operand in operands[0]]))
         elif len(operands) == 0:
             super().__init__(op)
         else:
-            super().__init__(lambda: op(*[operand() if isinstance(operand, (ObservableVariable, ObservableExpression)) else operand for operand in operands]))
+            is_obs = [isinstance(operand, (ObservableVariable, ObservableExpression)) for operand in operands]
+            
+            def _eval_op():
+                res = []
+                for i, operand in enumerate(operands):
+                    res.append(operand() if is_obs[i] else operand)
+                return op(*res)
+                
+            super().__init__(_eval_op)
         self.op = op
         self.operands = operands
         self.env = env

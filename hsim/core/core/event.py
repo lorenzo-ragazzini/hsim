@@ -221,6 +221,27 @@ class ConditionedEvent(BaseEvent):
             pass
         super().trigger(priority)
         
+    def reset(self) -> BaseEvent:
+        BaseEvent.cancel(self, safe=False)
+        self.time = np.inf
+        self._status = Status.PENDING
+        return self.add()
+
+    def cancel(self, safe=True) -> None:
+        super().cancel(safe)
+        if hasattr(self, 'condition'):
+            cond = self.condition
+            try:
+                cond.unlink(self)
+            except AttributeError:
+                pass
+            try:
+                cond._unsubscribe_edge(cond._sources)
+                cond._unsubscribe_edge(cond._targets)
+            except Exception:
+                pass
+            del self.condition
+
     def process(self) -> None:
         super().process()
         if hasattr(self, 'condition'):

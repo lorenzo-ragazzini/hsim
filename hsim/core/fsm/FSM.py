@@ -113,8 +113,18 @@ class FSM:
 
     def log_state_entry(self, state):
         self._state_history.append((state.name, True, self._env.now))
+        # Efficiently update current state without O(N) evaluation over all states
+        cur = list(self._current_state.value)
+        if state not in cur:
+            cur.append(state)
+            self._current_state.set(cur)
+            
     def log_state_exit(self, state):
         self._state_history.append((state.name, False, self._env.now))
+        cur = list(self._current_state.value)
+        if state in cur:
+            cur.remove(state)
+            self._current_state.set(cur)
     def log_transition(self, source, target):
         self._transition_history.append((source.name, target.name, self._env.now))
 
