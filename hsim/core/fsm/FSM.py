@@ -19,7 +19,7 @@ class FSM:
         env._objects.append(self)
         self._states:List['State'] = []
         self._transitions:List['Transition'] = []
-        self._transitions_from:Dict[str, List['Transition']] = {}
+        self._transitions_dict:Dict[str, 'Transition'] = {}
         self._messages:MessageQueue = MessageQueue(env)
         self._pseudostates:List['Pseudostate'] = []
         self._state_history = []  # Track state history with timestamps
@@ -46,11 +46,12 @@ class FSM:
                 self._states.append(element)
             elif isinstance(element, Transition):
                 element._global_id = len(self._transitions)
+                name = self._generate_transition_name(element.source, element.target)
+                element.name = name
                 self._transitions.append(element)
-                source_name = element.source.name
-                if source_name not in self._transitions_from:
-                    self._transitions_from[source_name] = []
-                self._transitions_from[source_name].append(element)
+                self._transitions_dict[name] = element
+                element.source._transitions_list.append(element)
+                element.source._transitions_dict[name] = element
             elif isinstance(element, Pseudostate):
                 self._pseudostates.append(element)
         elif isinstance(element, type):
@@ -61,10 +62,18 @@ class FSM:
                 source, target = self.statesps[element._sourceStateClass.__name__], self.statesps[element._targetStateClass.__name__]
                 new_transition = element(self, source, target).__override__()
                 self.add_element(new_transition)
-                source._transitions.append(new_transition)
             elif issubclass(element, Pseudostate):
                 self.add_element(element(element.__name__, self))
                 
+    def _generate_transition_name(self, source, target):
+        base = f"{source.name[0].upper()}2{target.name[0].upper()}"
+        name = base
+        count = 2
+        while name in self._transitions:
+            name = f"{base}{count}"
+            count += 1
+        return name
+
     def receive(self, message):
         self._messages.receive(message)
         self._on_receive(message)
@@ -77,10 +86,9 @@ class FSM:
         matches = []
         # Only check transitions from the current active states
         for state in self._current_state._value:
-            if state.name in self._transitions_from:
-                for transition in self._transitions_from[state.name]:
-                    if isinstance(transition, MessageTransition) and transition.interpret(msg):
-                        matches.append(transition)
+            for transition in state._transitions_list:
+                if isinstance(transition, MessageTransition) and transition.interpret(msg):
+                    matches.append(transition)
         if matches:
             if len(matches) > 1:
                 matches.sort(key=lambda x: x._global_id)
@@ -102,7 +110,10 @@ class FSM:
         return {state.name: state for state in self._states}
     @property
     def transitionsFrom(self):
-        return self._transitions_from
+        res = {name: [] for name in self.states}
+        for transition in self._transitions:
+            res[transition.source.name].append(transition)
+        return res
     @property
     def transitionsTo(self):
         res = {name: [] for name in self.states}

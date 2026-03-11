@@ -20,6 +20,7 @@ class Transition:
         self.source = source
         self.target = target
         self.guard = guard
+        self.name = None
         self.event = None
     def start(self):
         self.on_start()
