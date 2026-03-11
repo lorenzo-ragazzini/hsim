@@ -105,6 +105,8 @@ class Entity():
             
     
 def main(filename, folder='', fullpath='',app=True):
+    # Set fixed seed for determinism
+    np.random.seed(42)
     # %% read data
     if not app:
         with open('target.txt') as f:

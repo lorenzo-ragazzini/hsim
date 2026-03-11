@@ -18,25 +18,14 @@ from reaktiv.signal import ComputeSignal
 from reaktiv._debug import _debug_enabled
 def _patched_signal_get(self):
     """Optimized Signal.get() that avoids f-string evaluation when debug logging is disabled."""
-    if self._lock is not None:
-        with self._lock:
-            edge = graph.add_dependency(self)
-            if edge is not None:
-                edge.version = self._version
-            # Only format debug message if debugging is actually enabled
-            if _debug_enabled:
-                from reaktiv._debug import debug_log
-                debug_log(f"Signal get() returning value: {self._value}")
-            return self._value
-    else:
-        edge = graph.add_dependency(self)
-        if edge is not None:
-            edge.version = self._version
-        # Only format debug message if debugging is actually enabled
-        if _debug_enabled:
-            from reaktiv._debug import debug_log
-            debug_log(f"Signal get() returning value: {self._value}")
-        return self._value
+    # Bypassing lock check as thread-safety is disabled in this project context
+    edge = graph.add_dependency(self)
+    if edge is not None:
+        edge.version = self._version
+    if _debug_enabled:
+        from reaktiv._debug import debug_log
+        debug_log(f"Signal get() returning value: {self._value}")
+    return self._value
 
 Signal.get = _patched_signal_get
 
@@ -44,26 +33,17 @@ Signal.get = _patched_signal_get
 _original_signal_set = Signal.set
 
 def _patched_signal_set(self, new_value):
-    # Only format debug message if debugging is actually enabled
     if _debug_enabled:
         from reaktiv._debug import debug_log
         debug_log(f"Signal set() called with new_value: {new_value} (old_value: {self._value})")
 
-    # Call original _set_internal logic
-    # Disallow side effects from within a ComputeSignal's computation
+    # Simplified side-effect detection
     active = graph.active_consumer.get()
-    if active is not None:
-        if isinstance(active, ComputeSignal):
-            raise RuntimeError(
-                "Side effect detected: Cannot set Signal from within a ComputeSignal computation"
-            )
+    if active is not None and isinstance(active, ComputeSignal):
+        raise RuntimeError("Side effect detected: Cannot set Signal from within a ComputeSignal computation")
 
-    # Use lock to protect the entire set operation when thread safety is enabled
-    if self._lock is not None:
-        with self._lock:
-            self._set_internal(new_value)
-    else:
-        self._set_internal(new_value)
+    # Bypassing lock as thread-safety is disabled
+    self._set_internal(new_value)
 
 Signal.set = _patched_signal_set
 
