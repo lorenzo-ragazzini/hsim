@@ -47,6 +47,13 @@ def _patched_signal_set(self, new_value):
 
 Signal.set = _patched_signal_set
 
+# Patch _is_running_in_current_thread and _set_running_in_current_thread to no-ops.
+# These use threading.local for reentrancy/cycle detection, causing ~4.3M ContextVar-style
+# accesses per run. Safe to eliminate: the simulation is single-threaded, thread_safety
+# is already disabled (RLock is None), and graph-level version checks still catch cycles.
+ComputeSignal._is_running_in_current_thread = lambda self: False
+ComputeSignal._set_running_in_current_thread = lambda self, running: None
+
 # Cache for inspect.signature results to avoid repeated expensive introspection
 # This is safe because function signatures don't change during runtime
 _signature_cache = {}
