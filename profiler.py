@@ -6,11 +6,12 @@ import pandas as pd
 
 filename = r"data/profiler/GSOM_original.xlsx"
 
-if 0:
+if 1:
     from time import time
     t = time()
     main(filename=filename, app=True)
     print(f"Execution time without profiling: {time()-t} seconds")
+    print("Profiling skipped. Exiting.")
     raise SystemExit()
 
 profiler = cProfile.Profile()
