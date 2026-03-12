@@ -86,11 +86,16 @@ class Observable(ABC):
         """Backward compatibility - delegate to Reaktiv's call syntax"""
         return self._get_value()
     
+    # Class-level flag: True for ComputeSignal subclasses (ObservableExpression),
+    # False for plain Signal subclasses (ObservableVariable). Avoids 571k isinstance
+    # calls per run inside _get_value.
+    _is_compute_signal = False
+
     def _get_value(self):
         """Bypass Reaktiv graph evaluation if not in a reactive context."""
         # Only bypass for simple Signals, not ComputeSignals (Expressions)
         # which need to check for stale dependencies.
-        if graph.active_consumer.get() is None and not isinstance(self, ComputeSignal):
+        if graph.active_consumer.get() is None and not self._is_compute_signal:
             if hasattr(self, '_value'):
                 return self._value
         return self()  # Fallback to reactive Signal.get() / ComputeSignal()
@@ -262,6 +267,8 @@ class Observable(ABC):
     
 
 class ObservableExpression(ComputeSignal, Observable):
+    _is_compute_signal = True  # Overrides Observable._is_compute_signal
+
     def __init__(self, op: Callable, *operands: Union['ObservableVariable','ObservableExpression'],env=None):
         if getattr(op, "__name__", "") in ["all", "any"] or op in [all, any]:
             # For all/any, the first operand is usually a list of elements
