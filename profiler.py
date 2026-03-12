@@ -11,6 +11,7 @@ if 1:
     t = time()
     main(filename=filename, app=True)
     print(f"Execution time without profiling: {time()-t} seconds")
+    print("Profiling skipped. Exiting.")
     raise SystemExit()
 
 profiler = cProfile.Profile()

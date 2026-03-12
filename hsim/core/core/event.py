@@ -69,19 +69,22 @@ class BaseEvent():
         else:
             self.action.append(action), self.arguments.append([arguments])
     def schedule(self, time=None) -> BaseEvent:
-        self.time = time if time else self.time
         self._status = Status.SCHEDULED
-        if self._in_queue:
-            self.env.scheduler._queue.remove(self)
-            self.env.scheduler._queue.add(self)
+        was_in_queue = self._in_queue
+        if was_in_queue:
+            self.env.scheduler.remove(self)
+        self.time = time if time else self.time
+        if was_in_queue:
+            self.env.scheduler.enter(self)
         return self
     def trigger(self,priority=0) -> None:
         self._status = Status.TRIGGERED
         if self.time == np.inf:
-            self.env.scheduler._queue.remove(self) if self._in_queue else None
+            if self._in_queue:
+                self.env.scheduler.remove(self)
             self.time = self.env.now
             self.priority = priority
-            self.env.scheduler._queue.add(self)
+            self.env.scheduler.enter(self)
     def process(self) -> None:
         self._status = Status.PROCESSED
     @property
@@ -146,16 +149,17 @@ class ConditionEvent(BaseEvent):
         self._conditioned = True
         
     def add(self) -> BaseEvent:
-        self.env.scheduler._conditions.add(self)
+        self.env.scheduler.enter(self)
         return self
     
     def trigger(self) -> None:
         self._status = Status.TRIGGERED
         if self.time == np.inf:
-            self.env.scheduler._conditions.remove(self)
+            if self._in_queue:
+                self.env.scheduler.remove(self)
             self.time = self.env.now
             self.priority = 0
-            self.env.scheduler._queue.add(self)
+            self.env.scheduler.enter(self)
 
     def verify(self) -> bool:
         if self.condition():
@@ -184,10 +188,11 @@ class VerifiableEvent(ConditionEvent):
     def trigger(self) -> None:
         self._status = Status.TRIGGERED
         if self.time == np.inf:
-            self.env.scheduler._queue.remove(self)
+            if self._in_queue:
+                self.env.scheduler.remove(self)
             self.time = self.env.now
             self.priority = 0
-            self.env.scheduler._queue.add(self)
+            self.env.scheduler.enter(self)
 
 
 class ConditionedEvent(BaseEvent):
@@ -216,6 +221,27 @@ class ConditionedEvent(BaseEvent):
             pass
         super().trigger(priority)
         
+    def reset(self) -> BaseEvent:
+        BaseEvent.cancel(self, safe=False)
+        self.time = np.inf
+        self._status = Status.PENDING
+        return self.add()
+
+    def cancel(self, safe=True) -> None:
+        super().cancel(safe)
+        if hasattr(self, 'condition'):
+            cond = self.condition
+            try:
+                cond.unlink(self)
+            except AttributeError:
+                pass
+            try:
+                cond._unsubscribe_edge(cond._sources)
+                cond._unsubscribe_edge(cond._targets)
+            except Exception:
+                pass
+            del self.condition
+
     def process(self) -> None:
         super().process()
         if hasattr(self, 'condition'):

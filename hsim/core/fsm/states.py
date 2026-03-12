@@ -20,7 +20,8 @@ class State:
         self.name = name
         self._fsm = fsm
         self._env = fsm._env
-        self._transitions = list()
+        self._transitions_list = list()
+        self._transitions_dict = dict()
         self.initial_state = initial_state
         self._active = ObservableVariable(False, fsm._env)
     def _on_enter(self):
@@ -36,13 +37,13 @@ class State:
         self._active <<= True
         self._fsm.log_state_entry(self)  # Log state entry
         self._on_enter()
-        for transition in self.transitions:
+        for transition in self._transitions_list:
             transition.start()
     def stop(self):
         self._active <<= False
         self._fsm.log_state_exit(self)  # Log state exit
         self._on_exit()
-        for transition in self.transitions:
+        for transition in self._transitions_list:
             transition.stop()
     def interrupt(self):
         pass
@@ -53,7 +54,8 @@ class State:
         return self._fsm
     @property
     def transitions(self):
-        return self._transitions
+        """Backward compatibility: returns list of transitions."""
+        return self._transitions_list
     @property
     def active(self):
         return self._active
@@ -67,9 +69,9 @@ class State:
                 return getattr(object.__getattribute__(self,'_fsm'),name)
             except AttributeError as e2:
                 raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'") from e2
-    @property
     def transition(self, name:str):
-        return {name:[transition for transition in self.transitions if transition.name == name]}
+        """Returns the transition with the given name."""
+        return self._transitions_dict.get(name)
         
 
 # needing pseudostate or multiple transitions=??

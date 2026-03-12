@@ -7,11 +7,11 @@ if __name__ == "__main__":
         sys.path.append("//".join(os.path.abspath(__file__).split("\\")[:os.path.abspath(__file__).split("\\").index("hsim")+1]))
 
 
-from typing import Any, Iterable, List, Type, Union
+from typing import Any, Dict, Iterable, List, Type, Union
 import pandas as pd
 
 from hsim.core.core.msg import Message, MessageQueue
-from hsim.core.core.obs import ObservableExpression
+from hsim.core.core.obs import ObservableExpression, ObservableVariable
 
 class FSM:
     def __init__(self, env):
@@ -19,6 +19,7 @@ class FSM:
         env._objects.append(self)
         self._states:List['State'] = []
         self._transitions:List['Transition'] = []
+        self._transitions_dict:Dict[str, 'Transition'] = {}
         self._messages:MessageQueue = MessageQueue(env)
         self._pseudostates:List['Pseudostate'] = []
         self._state_history = []  # Track state history with timestamps
@@ -27,7 +28,7 @@ class FSM:
         self.add_element(get_class_dict(self, Pseudostate))
         self.add_element(get_class_dict(self, Transition))
         self.active, self.startable, self.stoppable = False, True, True
-        self._current_state = ObservableExpression(lambda: [t for t in self._states if t._active()])
+        self._current_state = ObservableVariable(list())
     def start(self):
         for state in self._states:
             state.start() if state.initial_state else None
@@ -44,7 +45,13 @@ class FSM:
             if isinstance(element, State):
                 self._states.append(element)
             elif isinstance(element, Transition):
+                element._global_id = len(self._transitions)
+                name = self._generate_transition_name(element.source, element.target)
+                element.name = name
                 self._transitions.append(element)
+                self._transitions_dict[name] = element
+                element.source._transitions_list.append(element)
+                element.source._transitions_dict[name] = element
             elif isinstance(element, Pseudostate):
                 self._pseudostates.append(element)
         elif isinstance(element, type):
@@ -53,11 +60,20 @@ class FSM:
                 self.add_element(element(element.__name__, self, initial_state))
             elif issubclass(element, Transition):
                 source, target = self.statesps[element._sourceStateClass.__name__], self.statesps[element._targetStateClass.__name__]
-                self.add_element(element(self, source, target).__override__())
-                source._transitions.append(self._transitions[-1])
+                new_transition = element(self, source, target).__override__()
+                self.add_element(new_transition)
             elif issubclass(element, Pseudostate):
                 self.add_element(element(element.__name__, self))
                 
+    def _generate_transition_name(self, source, target):
+        base = f"{source.name[0].upper()}2{target.name[0].upper()}"
+        name = base
+        count = 2
+        while name in self._transitions:
+            name = f"{base}{count}"
+            count += 1
+        return name
+
     def receive(self, message):
         self._messages.receive(message)
         self._on_receive(message)
@@ -67,8 +83,16 @@ class FSM:
         return msg
     def guard_message(self):
         msg = self._messages.get()
-        for transition in self._transitions:
-            if transition.source in self.current_state and isinstance(transition, MessageTransition) and transition.interpret(msg):
+        matches = []
+        # Only check transitions from the current active states
+        for state in self._current_state._value:
+            for transition in state._transitions_list:
+                if isinstance(transition, MessageTransition) and transition.interpret(msg):
+                    matches.append(transition)
+        if matches:
+            if len(matches) > 1:
+                matches.sort(key=lambda x: x._global_id)
+            for transition in matches:
                 transition.event.trigger()
     def _on_receive(self, message):
         self.guard_message()
@@ -86,13 +110,25 @@ class FSM:
         return {state.name: state for state in self._states}
     @property
     def transitionsFrom(self):
-        return {name: [transition for transition in self._transitions if transition.source == source] for name, source in self.states.items()}
+        res = {name: [] for name in self.states}
+        for transition in self._transitions:
+            res[transition.source.name].append(transition)
+        return res
     @property
     def transitionsTo(self):
-        return {name: [transition for transition in self._transitions if transition.target == target] for name, target in self.states.items()}
+        res = {name: [] for name in self.states}
+        for transition in self._transitions:
+            res[transition.target.name].append(transition)
+        return res
     @property
     def transitionsFromTo(self):
-        return {(source, target): [transition for transition in self._transitions if transition.source == source and transition.target == target] for source in self.states for target in self.states}
+        res = {}
+        for transition in self._transitions:
+            key = (transition.source, transition.target)
+            if key not in res:
+                res[key] = []
+            res[key].append(transition)
+        return res
     @property
     def pseudostates(self):
         return {state.name: state for state in self._pseudostates}
@@ -102,20 +138,29 @@ class FSM:
         d.update({state.name: state for state in self._pseudostates})
         return d
     def __getattr__(self, name: str) -> Any:
+        # __getattr__ is only called when normal attribute lookup fails.
+        # Optimize by avoiding redundant object.__getattribute__ call which always fails.
+        if name == '_agent' or name.startswith('__'):
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
         try:
-            return object.__getattribute__(self,name)
-        except AttributeError as e1:
-            if name == '_agent' or name[:2] == "__":
-                raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'") from e1
-            try:
-                return getattr(object.__getattribute__(self,'_agent'),name)
-            except AttributeError as e2:
-                raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'") from e2
+            return getattr(object.__getattribute__(self, '_agent'), name)
+        except AttributeError as e:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'") from e
 
     def log_state_entry(self, state):
         self._state_history.append((state.name, True, self._env.now))
+        # Direct access to _value bypasses all observability overhead in hot path
+        cur = self._current_state._value
+        if state not in cur:
+            # We must still call .set() or update to trigger downstream effects if any
+            self._current_state.set(cur + [state])
+            
     def log_state_exit(self, state):
         self._state_history.append((state.name, False, self._env.now))
+        cur = self._current_state._value
+        if state in cur:
+            new_cur = [s for s in cur if s is not state]
+            self._current_state.set(new_cur)
     def log_transition(self, source, target):
         self._transition_history.append((source.name, target.name, self._env.now))
 
