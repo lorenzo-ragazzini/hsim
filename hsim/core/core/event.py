@@ -27,13 +27,12 @@ class Status(Enum):
     CONDITIONED = auto()
     
 class BaseEvent():
-    __slots__ = ('env', 'sequence', 'time', 'priority', '_status', 'action', 'arguments', 'kwargs', '_conditioned', '_canceled', '_should_reset_on_false', '_in_queue', 'urgent')
-    def __init__(self, env: 'Environment', priority: Union[float,int]=1, action: Union[Iterable[Callable[..., Any]], Callable[..., Any]] = object, arguments: Any = None, urgent: bool = False, **kwargs: Any): # type: ignore
+    __slots__ = ('env', 'sequence', 'time', 'priority', '_status', 'action', 'arguments', 'kwargs', '_conditioned', '_canceled', '_should_reset_on_false', '_in_queue')
+    def __init__(self, env: 'Environment', priority: Union[float,int]=1, action: Union[Iterable[Callable[..., Any]], Callable[..., Any]] = object, arguments: Any = None, **kwargs: Any): # type: ignore
         self.env = env
         self.sequence = next(env.scheduler._sequence_generator)
         self.time = np.inf
         self.priority = priority
-        self.urgent = urgent  # Urgent events execute before regular ones at same (time, priority)
         self._status : Status = Status.PENDING
         self.action = action
         self.arguments = [] if arguments is None else arguments

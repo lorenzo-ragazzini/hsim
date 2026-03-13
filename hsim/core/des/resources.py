@@ -345,7 +345,7 @@ class Resource:
         self._queue = []  # Waiting requesters
         
         # Initialize monitors
-        current_time = env.t() if env else 0.0
+        current_time = env.now if env else 0.0
         self.capacity_monitor.tally(current_time, float(capacity))
         self.available_monitor.tally(current_time, float(capacity))
         self.claimed_monitor.tally(current_time, 0.0)
@@ -361,7 +361,7 @@ class Resource:
         Returns:
             True if immediately granted, False if queued
         """
-        current_time = self.env.t() if self.env else 0.0
+        current_time = self.env.now if self.env else 0.0
         
         if quantity <= self._available:
             # Grant immediately
@@ -384,7 +384,7 @@ class Resource:
             requester: Entity releasing
             quantity: Number of units to release
         """
-        current_time = self.env.t() if self.env else 0.0
+        current_time = self.env.now if self.env else 0.0
         
         self._available += quantity
         self._claimed -= quantity
