@@ -310,6 +310,115 @@ def test6():
     env.run(50)
     assert len(t.store) == 1
     
+class Resource:
+    """A resource with limited capacity that can be requested and released.
+    
+    Tracks:
+    - Capacity (maximum concurrent requests)
+    - Available units
+    - Claimed units  
+    - Occupancy (users waiting or using)
+    """
+    
+    def __init__(self, name: str, capacity: int = 1, env=None):
+        """Initialize a resource.
+        
+        Args:
+            name: Resource name
+            capacity: Maximum concurrent users
+            env: Reference to Environment (for time access)
+        """
+        self.name = name
+        self.capacity = capacity
+        self.env = env
+        
+        # Track statistics
+        from hsim.core.stats.monitor import LevelMonitor
+        self.capacity_monitor = LevelMonitor(f"{name}_capacity")
+        self.available_monitor = LevelMonitor(f"{name}_available")
+        self.claimed_monitor = LevelMonitor(f"{name}_claimed")
+        self.occupancy_monitor = LevelMonitor(f"{name}_occupancy")
+        
+        # Current state
+        self._available = capacity
+        self._claimed = 0
+        self._queue = []  # Waiting requesters
+        
+        # Initialize monitors
+        current_time = env.t() if env else 0.0
+        self.capacity_monitor.tally(current_time, float(capacity))
+        self.available_monitor.tally(current_time, float(capacity))
+        self.claimed_monitor.tally(current_time, 0.0)
+        self.occupancy_monitor.tally(current_time, 0.0)
+    
+    def request(self, requester, quantity: int = 1) -> bool:
+        """Request units from the resource.
+        
+        Args:
+            requester: Entity requesting (for identification)
+            quantity: Number of units requested
+            
+        Returns:
+            True if immediately granted, False if queued
+        """
+        current_time = self.env.t() if self.env else 0.0
+        
+        if quantity <= self._available:
+            # Grant immediately
+            self._available -= quantity
+            self._claimed += quantity
+            
+            self.available_monitor.tally(current_time, float(self._available))
+            self.claimed_monitor.tally(current_time, float(self._claimed))
+            return True
+        else:
+            # Queue the request
+            self._queue.append((requester, quantity))
+            self.occupancy_monitor.tally(current_time, float(len(self._queue)))
+            return False
+    
+    def release(self, requester, quantity: int = 1):
+        """Release units back to the resource.
+        
+        Args:
+            requester: Entity releasing
+            quantity: Number of units to release
+        """
+        current_time = self.env.t() if self.env else 0.0
+        
+        self._available += quantity
+        self._claimed -= quantity
+        
+        self.available_monitor.tally(current_time, float(self._available))
+        self.claimed_monitor.tally(current_time, float(self._claimed))
+        
+        # Try to fulfill queued requests
+        while self._queue and self._available > 0:
+            next_requester, next_quantity = self._queue[0]
+            if next_quantity <= self._available:
+                self._queue.pop(0)
+                self._available -= next_quantity
+                self._claimed += next_quantity
+                
+                self.available_monitor.tally(current_time, float(self._available))
+                self.claimed_monitor.tally(current_time, float(self._claimed))
+                self.occupancy_monitor.tally(current_time, float(len(self._queue)))
+            else:
+                break
+    
+    def available(self) -> int:
+        """Return number of available units."""
+        return self._available
+    
+    def claimed(self) -> int:
+        """Return number of claimed units."""
+        return self._claimed
+    
+    def occupancy(self) -> int:
+        """Return number of entities waiting in queue."""
+        return len(self._queue)
+
+
 if __name__ == "__main__":
     from hsim.core.des.pymulate import Generator
     from hsim.core.des.manual import Operator

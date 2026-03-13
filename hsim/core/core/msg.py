@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 from sortedcontainers import SortedList
 from hsim.core.core.event import BaseEvent, RecurringEvent, Status
 from hsim.core.core.obs import ObservableVariable, ObservableExpression
+from hsim.core.stats.monitor import LevelMonitor, NonLevelMonitor
 
 class Message():
     # __slots__ = ('env', 'content', 'receiver', 'sender', 'status', 'receipts')
@@ -76,6 +77,13 @@ class MessageQueue:
         self._message_history = list()
         self._queue_history = list()
         
+        # Add monitors for queue statistics
+        self.length = LevelMonitor("queue_length")
+        self.length_of_stay = NonLevelMonitor("queue_length_of_stay")
+        
+        # Track when messages enter the queue for length_of_stay
+        self._message_entry_times = {}
+        
     def _trigger(self):
         # self.event.action = self._on_receive
         self.event.trigger()
@@ -86,6 +94,12 @@ class MessageQueue:
     def _put(self, message):
         self.queue.add(message)
         self._log_in(message)
+        
+        # Track monitor for queue length
+        self.length.tally(self.env.now, float(len(self.queue)))
+        
+        # Track entry time for length of stay
+        self._message_entry_times[id(message)] = self.env.now
 
     def receiveContent(self, content:Any, sender=None) -> Message:
         message = Message(self.env, content, receiver=self, sender=sender, wait=True)
@@ -106,6 +120,14 @@ class MessageQueue:
         """
         try:
             self.queue.remove(message)
+            # Track monitor for queue length
+            self.length.tally(self.env.now, float(len(self.queue)))
+            # Record length of stay
+            msg_id = id(message)
+            if msg_id in self._message_entry_times:
+                stay_time = self.env.now - self._message_entry_times[msg_id]
+                self.length_of_stay.tally(stay_time)
+                del self._message_entry_times[msg_id]
         except ValueError:
             logger.warning("Message not found in receiver queue, deleting message object")
             for event in message.receipts.values():
@@ -116,6 +138,17 @@ class MessageQueue:
         message = self.queue.pop(0)
         message.read()
         self._log_out(message)
+        
+        # Track monitor for queue length
+        self.length.tally(self.env.now, float(len(self.queue)))
+        
+        # Record length of stay
+        msg_id = id(message)
+        if msg_id in self._message_entry_times:
+            stay_time = self.env.now - self._message_entry_times[msg_id]
+            self.length_of_stay.tally(stay_time)
+            del self._message_entry_times[msg_id]
+        
         return message
         
     def inspect(self, index=0):
