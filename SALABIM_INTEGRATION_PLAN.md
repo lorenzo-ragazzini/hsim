@@ -175,16 +175,45 @@ class AnimationMixin:
 
 ## 3. Implementation phases
 
-| Phase | Deliverable | File(s) |
-|---|---|---|
-| **1** | `Monitor` class with level/non-level, `array.array` backing, stats API | `hsim/core/stats/monitor.py` |
-| **2** | Queue augmented with `length` + `length_of_stay` Monitors | `hsim/core/agent/q.py` |
-| **3** | `Resource` class with requesters/claimers queues + 4 Monitors | `hsim/core/des/resource.py` |
-| **4** | Scheduler `urgent` flag + `cap_now` guard + `standby` list | `hsim/core/core/env.py` |
-| **5** | `TrajectoryPolygon`, `_Movement`, `TrajectoryMerged`, `TrajectoryCircle` | `hsim/core/des/trajectory.py` |
-| **6** | Distribution wrappers | `hsim/core/utils/distributions.py` |
-| **7** | `ComponentGenerator` enhancements | `hsim/core/des/pymulate.py` |
-| **8** | `animation_state()` mixin + AnimateMonitor helper | `hsim/core/stats/animate.py` |
+| Phase | Deliverable | File(s) | Status |
+|---|---|---|---|
+| **1** | `Monitor` class with level/non-level, `array.array` backing, stats API | `hsim/core/stats/monitor.py` | ✅ Done |
+| **2** | Queue augmented with `length` + `length_of_stay` Monitors | `hsim/core/agent/q.py` | ✅ Done |
+| **3** | `Resource` class with requesters/claimers queues + 4 Monitors | `hsim/core/des/resources.py` | ✅ Done |
+| **4** | Scheduler `urgent` flag + `cap_now` guard + `standby` list | `hsim/core/core/env.py` | ✨ Simplified (priorities sufficient) |
+| **5** | `TrajectoryPolygon`, `_Movement`, `TrajectoryMerged`, `TrajectoryCircle` | `hsim/core/des/trajectory.py` | 🔄 In Progress |
+| **6** | Distribution wrappers | `hsim/core/utils/distributions.py` | ⏳ Planned |
+| **7** | `ComponentGenerator` enhancements | `hsim/core/des/pymulate.py` | ⏳ Planned |
+| **8** | Animation: `animation_state()` mixin + Plotly export | `hsim/core/stats/animation.py` | ⏳ Planned |
+
+---
+
+## 3.5 Animation strategy (web-first)
+
+```
+┌─────────────────────────────────────────────────────┐
+│ Simulation (hsim)                                   │
+├─────────────────────────────────────────────────────┤
+│ • Monitor._t, Monitor._x arrays (time-series data)  │
+│ • AGV.animation_state(t) → { x, y, z, rotation }   │
+│ • Queue items + positions                           │
+└────────────┬────────────────────────────────────────┘
+             │ JSON export via Flask
+             ↓
+┌─────────────────────────────────────────────────────┐
+│ Web Renderer (Plotly/Three.js)                      │
+├─────────────────────────────────────────────────────┤
+│ • Line charts: Monitor time-series                  │
+│ • 3D canvas: animated positions via trajectory.x(t) │
+│ • Timeline scrubber: frame-by-frame playback        │
+└─────────────────────────────────────────────────────┘
+```
+
+**Key insight**: No per-tick animation event. `trajectory.x(t)` is purely mathematical — evaluate on demand from stored simulation times.
+
+**Monitor visualization**: `go.Scatter(x=monitor._t, y=monitor._x, mode='lines')` — direct Plotly feed.
+
+**Trajectory preview**: Plot all waypoints and circle segments; highlight current location based on current time.
 
 ---
 
