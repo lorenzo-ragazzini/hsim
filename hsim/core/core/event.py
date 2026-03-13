@@ -230,8 +230,14 @@ class ConditionedEvent(BaseEvent):
     def cancel(self, safe=True) -> None:
         super().cancel(safe)
         if hasattr(self, 'condition'):
+            cond = self.condition
             try:
-                self.condition.unlink(self)
+                cond.unlink(self)
+            except AttributeError:
+                pass
+            try:
+                cond._unsubscribe_edge(cond._sources)
+                cond._unsubscribe_edge(cond._targets)
             except Exception:
                 pass
             del self.condition
@@ -239,10 +245,9 @@ class ConditionedEvent(BaseEvent):
     def process(self) -> None:
         super().process()
         if hasattr(self, 'condition'):
-            try:
-                self.condition.unlink(self)
-            except Exception:
-                pass
+            cond = self.condition
+            cond.unlink(self)
+            cond._unsubscribe_edge(cond._sources), cond._unsubscribe_edge(cond._targets)
             del self.condition
 
             

@@ -85,7 +85,7 @@ class FSM:
         msg = self._messages.get()
         matches = []
         # Only check transitions from the current active states
-        for state in self._current_state.value:
+        for state in self._current_state._value:
             for transition in state._transitions_list:
                 if isinstance(transition, MessageTransition) and transition.interpret(msg):
                     matches.append(transition)
@@ -149,13 +149,15 @@ class FSM:
 
     def log_state_entry(self, state):
         self._state_history.append((state.name, True, self._env.now))
-        cur = self._current_state.value
+        # Direct access to _value bypasses all observability overhead in hot path
+        cur = self._current_state._value
         if state not in cur:
+            # We must still call .set() or update to trigger downstream effects if any
             self._current_state.set(cur + [state])
             
     def log_state_exit(self, state):
         self._state_history.append((state.name, False, self._env.now))
-        cur = self._current_state.value
+        cur = self._current_state._value
         if state in cur:
             new_cur = [s for s in cur if s is not state]
             self._current_state.set(new_cur)
