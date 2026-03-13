@@ -29,39 +29,81 @@ class Scheduler():
         self._lock = Context()
         self._past = list()
         self._env = env
-        self._queue = []                   # heapq: (time, priority, neg_sequence, event)
+        self._queue = []                   # heapq: (time, not_urgent, priority, neg_sequence, event)
         self._waiting = {}                 # dict[id(event) -> event], for time==inf events
+        self._standby = {}                 # dict[id(event) -> event], for passive events not yet scheduled
         self._sequence_generator = Counter()
         self.timefunc = timefunc
         self.delayfunc = delayfunc
-    def enter(self, event: 'Event') -> 'Event':
+    def enter(self, event: 'Event', standby: bool = False) -> 'Event':
+        """Add event to scheduler.
+        
+        Args:
+            event: Event to schedule
+            standby: If True, add to standby queue (not scheduled yet)
+        """
         event._in_queue = True
-        if event.time == np.inf:
+        if standby:
+            self._standby[id(event)] = event
+        elif event.time == np.inf:
             self._waiting[id(event)] = event
         else:
-            heapq.heappush(self._queue, (event.time, event.priority, -event.sequence, event))
+            # Heap tuple: (time, not_urgent, priority, neg_sequence, event)
+            # not_urgent is 1 for normal, 0 for urgent, so urgent events sort first at same time
+            not_urgent = 0 if event.urgent else 1
+            heapq.heappush(self._queue, (event.time, not_urgent, event.priority, -event.sequence, event))
         return event
     def remove(self, event: 'Event') -> None:
         """Remove event from whichever collection it's in. Call BEFORE mutating event.time."""
         if not event._in_queue:
             return
-        if event.time == np.inf:
+        if id(event) in self._standby:
+            self._standby.pop(id(event), None)
+        elif event.time == np.inf:
             self._waiting.pop(id(event), None)
         else:
             # O(n) — only called for rescheduling, not hot path
-            self._queue = [(t, p, s, e) for t, p, s, e in self._queue if e is not event]
+            self._queue = [(t, nu, p, s, e) for t, nu, p, s, e in self._queue if e is not event]
             heapq.heapify(self._queue)
         event._in_queue = False
-    def enterabs(self, time, priority, action=object, argument=(), kwargs={}) -> 'Event':
-        return self.enter(TimedEvent(self._env, time, priority, action, argument, **kwargs))
-    def delay(self, delay, priority, action=object, argument=(), kwargs={}) -> 'Event':
-        return self.enterabs(self.timefunc() + delay, priority, action, argument, kwargs)
-    def late(self, priority, action, argument=(), kwargs={}):
-        return self.enterabs(np.inf, priority, action, argument, kwargs)
+    def enterabs(self, time, priority, action=object, argument=(), urgent=False, kwargs={}) -> 'Event':
+        return self.enter(TimedEvent(self._env, time, priority, action, argument, urgent=urgent, **kwargs))
+    def delay(self, delay, priority, action=object, argument=(), urgent=False, kwargs={}) -> 'Event':
+        """Schedule event after delay seconds.
+        
+        Args:
+            delay: Seconds to wait (clamped to 0 if negative via cap_now)
+            priority: Event priority
+            action: Action to execute
+            argument: Arguments for action
+            urgent: If True, execute before regular events at same time
+            kwargs: Additional keyword arguments
+            
+        Returns:
+            Scheduled event
+        """
+        # cap_now: clamp negative delays to current time
+        actual_delay = max(0.0, delay)
+        return self.enterabs(self.timefunc() + actual_delay, priority, action, argument, urgent=urgent, kwargs=kwargs)
+    def late(self, priority, action, argument=(), urgent=False, kwargs={}):
+        """Schedule event at infinite time (passive event waiting)."""
+        return self.enterabs(np.inf, priority, action, argument, urgent=urgent, kwargs=kwargs)
+    def standby(self, event: 'Event') -> 'Event':
+        """Add event to standby queue (not yet scheduled)."""
+        return self.enter(event, standby=True)
+    def activate_standby(self, event: 'Event', time: float, priority: int) -> 'Event':
+        """Move event from standby to active queue."""
+        if id(event) in self._standby:
+            self._standby.pop(id(event), None)
+            event.time = time
+            event.priority = priority
+            not_urgent = 0 if event.urgent else 1
+            heapq.heappush(self._queue, (event.time, not_urgent, event.priority, -event.sequence, event))
+        return event
     def run(self, blocking=True):
         delayfunc, timefunc, lock, past = self.delayfunc, self.timefunc, self._lock, self._past
         while self._queue:
-            _, _, _, event = heapq.heappop(self._queue)
+            _, _, _, _, event = heapq.heappop(self._queue)  # Unpack 5-tuple: (time, not_urgent, priority, neg_sequence, event)
             event._in_queue = False
             if getattr(event, "_canceled", False):
                 continue
