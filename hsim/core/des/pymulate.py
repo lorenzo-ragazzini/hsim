@@ -126,6 +126,12 @@ class Generator(DESBlock, TimedBlock):
     """Generates agents.
     Args:
         agent_function: Callable[[],Agent] - function that generates agents.
+        moments: List[float] - exact scheduled arrival times (absolute)
+        equidistant: bool - if True, spread N arrivals evenly in [at, till]
+        at: float - start time for equidistant mode
+        till: float - end time for equidistant mode
+        at_end: Callable - callback invoked when generation wave ends
+        disturbance: {callable, float, Distribution} - jitter on inter-arrival times
     """
     def __init__(self, env, name=None,
                  agent_function:Union[Callable[[],Agent],Agent]=Agent,
@@ -137,6 +143,13 @@ class Generator(DESBlock, TimedBlock):
                  production_plan: Optional[List[Dict]] = None,
                  production_mix: Optional[Union[Dict[Callable, float], List[tuple]]] = None,
                  plan_release_time: bool = False,
+                 # new generation features
+                 moments: Optional[List[float]] = None,
+                 equidistant: bool = False,
+                 at: float = 0.0,
+                 till: float = 100.0,
+                 at_end: Optional[Callable] = None,
+                 disturbance: Union[None, float, Callable] = None,
                  ):
         super().__init__(env, name)
         self._counter = 0
@@ -155,6 +168,22 @@ class Generator(DESBlock, TimedBlock):
         self.production_mix = production_mix
         # if True, times in production_plan are release times (absolute) instead of interarrival
         self.plan_release_time = bool(plan_release_time)
+        
+        # new generation features
+        self.moments = list(moments) if moments else None
+        self.equidistant = bool(equidistant)
+        self.at = float(at)
+        self.till = float(till)
+        self.at_end = at_end  # callback when generation ends
+        self.disturbance = disturbance  # jitter function/value/distribution
+        
+        # internal state for moments and equidistant generation
+        self._moments_index = 0
+        self._equidistant_arrivals = []
+        
+        # pre-compute equidistant arrivals if enabled
+        if self.equidistant:
+            self._compute_equidistant_arrivals()
 
         # allow passing pandas DataFrame for production_plan or production_mix
         try:
@@ -199,6 +228,38 @@ class Generator(DESBlock, TimedBlock):
 
         # initial timeout
         self.stateMachine.transitionsFrom["Starving"][0].timeout = self.calculateServiceTime()
+    
+    def _compute_equidistant_arrivals(self):
+        """Pre-compute arrival times evenly spaced in [at, till].
+        
+        Generates batch_size arrival times distributed evenly across the interval.
+        """
+        if self.batch_size <= 0:
+            return
+        
+        if self.batch_size == 1:
+            # Single arrival at start
+            self._equidistant_arrivals = [self.at]
+        else:
+            # N arrivals: spread across [at, till] with N-1 equal intervals
+            interval = (self.till - self.at) / (self.batch_size - 1)
+            self._equidistant_arrivals = [self.at + i * interval for i in range(self.batch_size)]
+    
+    def _apply_disturbance(self, iat: float) -> float:
+        """Apply jitter to inter-arrival time based on disturbance setting."""
+        if self.disturbance is None:
+            return iat
+        
+        # callable: assume it returns a scalar
+        if callable(self.disturbance):
+            jitter = self.disturbance()
+        # numeric: assume it's a std dev or absolute value
+        elif isinstance(self.disturbance, (int, float)):
+            jitter = random.gauss(0, self.disturbance)  # normal distribution around 0
+        else:
+            jitter = 0.0
+        
+        return max(0.0, iat + jitter)  # prevent negative IAT
     class FSM(FSM):
         class Starving(State):
             initial_state=True
@@ -267,10 +328,28 @@ class Generator(DESBlock, TimedBlock):
     def calculateServiceTime(self, entity:Optional[Agent]=None, attribute: str = 'serviceTime') -> Optional[float]:
         """Wrapper for service time calculation.
 
+        - If `moments` is present, compute interval to next scheduled moment (absolute time)
+        - If `equidistant` is True, compute interval to next equidistant arrival
         - If a `production_plan` is present, compute the next interval from the current plan
           entry (without creating agents).
         - Otherwise defer to the original TimedBlock calculation.
         """
+        # moments: exact scheduled arrival times (absolute)
+        if self.moments:
+            if self._moments_index >= len(self.moments):
+                return None
+            next_time = self.moments[self._moments_index]
+            interval = max(0.0, next_time - self.env.now)
+            return interval
+        
+        # equidistant: arrivals spread evenly in [at, till]
+        if self.equidistant and self._equidistant_arrivals:
+            if self._moments_index >= len(self._equidistant_arrivals):
+                return None
+            next_time = self._equidistant_arrivals[self._moments_index]
+            interval = max(0.0, next_time - self.env.now)
+            return interval
+        
         # If there's a plan, compute from plan entry (do not create agents here)
         if self.production_plan:
             if self._plan_index >= len(self.production_plan):
@@ -295,11 +374,16 @@ class Generator(DESBlock, TimedBlock):
                 if inter is None:
                     from hsim.core.des.des import TimedBlock as _TimedBlock
                     return _TimedBlock.calculateServiceTime(self, entity, attribute)
-                return float(inter)
+                # apply disturbance to IAT
+                iat = float(inter)
+                return self._apply_disturbance(iat)
 
         # No production plan: delegate to original TimedBlock implementation
         from hsim.core.des.des import TimedBlock as _TimedBlock
-        return _TimedBlock.calculateServiceTime(self, entity, attribute)
+        iat = _TimedBlock.calculateServiceTime(self, entity, attribute)
+        if iat is not None:
+            iat = self._apply_disturbance(iat)
+        return iat
 
     def _create_agents_for_entry(self, entry=None):
         """Create list of agents for a plan entry or according to mode."""
@@ -384,9 +468,11 @@ class Generator(DESBlock, TimedBlock):
             except Exception as e:
                 warn(RuntimeWarning(e))
 
-        # advance plan cursor if applicable
+        # advance cursor based on generation mode
         if self.production_plan:
             self._plan_index += 1
+        elif self.moments or self.equidistant:
+            self._moments_index += 1
 
         # schedule next interval; do not assign a None timeout (prevents scheduler errors)
         next_interval = self.calculateServiceTime()
@@ -396,9 +482,17 @@ class Generator(DESBlock, TimedBlock):
             except Exception:
                 pass
         else:
-            # no further scheduling: leave transition timeout unchanged (stop generating)
+            # no further scheduling: generation wave complete
+            # invoke at_end callback if provided
+            if self.at_end is not None:
+                try:
+                    if callable(self.at_end):
+                        self.at_end()
+                except Exception as e:
+                    warn(RuntimeWarning(f"at_end callback failed: {e}"))
+            
+            # try to deactivate the generator FSM to avoid further transitions
             try:
-                # try to deactivate the generator FSM to avoid further transitions
                 if hasattr(self, "deactivate_fsm"):
                     try:
                         self.deactivate_fsm()
