@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Service Times</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; } .container { max-width: 1200px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); } h1 { color: #333; margin-top: 0; }</style>
+</head>
+<body>
+  <div class='container'>
+    <h1>Service Times</h1>
+    <div id="plot-135024772991888" style="width:100%;height:500px;"></div>
+<script>
+var data = [{"x": [0, 1, 2, 3, 4, 5, 6, 7], "y": [0.5, 1.2, 0.8, 1.5, 0.9, 1.1, 1.4, 0.7], "mode": "lines", "name": "Service Times", "line": {"color": "steelblue", "width": 2}, "hovertemplate": "Time: %{x:.2f}<br>Service Times: %{y:.2f}<extra></extra>"}];
+var layout = {
+  title: "Service Times",
+  xaxis: { title: "Time" },
+  yaxis: { title: "Service Times" },
+  hovermode: "closest"
+};
+Plotly.newPlot("plot-135024772991888", data, layout);
+</script>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AGV Movement Timeline</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; } .container { max-words: 1400px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); } h1 { color: #333; margin-top: 0; } p { color: #666; } table { width: 100 percent; border-collapse: collapse; background: white; } th { background: #4CAF50; color: white; padding: 12px; text-align: left; font-weight: bold; } td { padding: 10px; border-bottom: 1px solid #ddd; } tr:hover { background: #f9f9f9; } .time { font-family: monospace; color: #0066cc; } .state { font-family: monospace; font-size: 12px; }</style>
+</head>
+<body>
+  <div class='container'>
+    <h1>AGV Movement Timeline</h1>
+    <p>Total frames: 5</p>
+    <table>
+      <tr>
+        <th>Frame #</th><th>Time</th><th>Entity Name</th><th>Position (x, y)</th><th>Color</th><th>State</th>
+      </tr>
+      <tr>
+        <td>0</td><td class='time'>0.00</td><td><strong>AGV-01</strong></td><td>(0.00, 0.00)</td><td><span style='display:inline-block;width:20px;height:20px;background:blue;border-radius:2px;'></span> blue</td><td class='state'>{"name": "AGV-01", "x": 0, "y": 0, "color": "blue", "rotation": 0}</td>
+      </tr>
+      <tr>
+        <td>1</td><td class='time'>1.00</td><td><strong>AGV-01</strong></td><td>(2.50, 2.50)</td><td><span style='display:inline-block;width:20px;height:20px;background:green;border-radius:2px;'></span> green</td><td class='state'>{"name": "AGV-01", "x": 2.5, "y": 2.5, "color": "green", "rotation": 45}</td>
+      </tr>
+      <tr>
+        <td>2</td><td class='time'>2.00</td><td><strong>AGV-01</strong></td><td>(5.00, 5.00)</td><td><span style='display:inline-block;width:20px;height:20px;background:orange;border-radius:2px;'></span> orange</td><td class='state'>{"name": "AGV-01", "x": 5, "y": 5, "color": "orange", "rotation": 90}</td>
+      </tr>
+      <tr>
+        <td>3</td><td class='time'>3.00</td><td><strong>AGV-01</strong></td><td>(7.50, 2.50)</td><td><span style='display:inline-block;width:20px;height:20px;background:red;border-radius:2px;'></span> red</td><td class='state'>{"name": "AGV-01", "x": 7.5, "y": 2.5, "color": "red", "rotation": 135}</td>
+      </tr>
+      <tr>
+        <td>4</td><td class='time'>4.00</td><td><strong>AGV-01</strong></td><td>(10.00, 0.00)</td><td><span style='display:inline-block;width:20px;height:20px;background:purple;border-radius:2px;'></span> purple</td><td class='state'>{"name": "AGV-01", "x": 10, "y": 0, "color": "purple", "rotation": 180}</td>
+      </tr>
+    </table>
+
+  </div>
+</body>
+</html>

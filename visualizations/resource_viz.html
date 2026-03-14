@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Resource Visualization</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; } .container { max-width: 1200px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); } h1 { color: #333; margin-top: 0; } .plot { width: 100%; height: 500px; margin-bottom: 30px; } h2 { color: #666; margin-top: 30px; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; }</style>
+</head>
+<body>
+  <div class='container'>
+    <h1>Resource: Assembly Station</h1>
+    <h2>Capacity</h2>
+    <div id="plot-capacity" class="plot"></div>
+    <script>
+        var trace_capacity = {"x": [0, 1, 2, 3, 4], "y": [5, 5, 5, 5, 5], "mode": "lines", "name": "Capacity", "line": {"width": 2}};
+        var layout_capacity = {
+            title: 'Capacity',
+            xaxis: { title: 'Time' },
+            yaxis: { title: 'Units' },
+            hovermode: 'closest'
+        };
+        Plotly.newPlot('plot-capacity', [trace_capacity], layout_capacity);
+    </script>
+    <h2>Available Units</h2>
+    <div id="plot-available" class="plot"></div>
+    <script>
+        var trace_available = {"x": [0, 1, 2, 3, 4], "y": [5, 4, 2, 3, 5], "mode": "lines", "name": "Available Units", "line": {"width": 2}};
+        var layout_available = {
+            title: 'Available Units',
+            xaxis: { title: 'Time' },
+            yaxis: { title: 'Units' },
+            hovermode: 'closest'
+        };
+        Plotly.newPlot('plot-available', [trace_available], layout_available);
+    </script>
+    <h2>Claimed Units</h2>
+    <div id="plot-claimed" class="plot"></div>
+    <script>
+        var trace_claimed = {"x": [0, 1, 2, 3, 4], "y": [0, 1, 3, 2, 0], "mode": "lines", "name": "Claimed Units", "line": {"width": 2}};
+        var layout_claimed = {
+            title: 'Claimed Units',
+            xaxis: { title: 'Time' },
+            yaxis: { title: 'Units' },
+            hovermode: 'closest'
+        };
+        Plotly.newPlot('plot-claimed', [trace_claimed], layout_claimed);
+    </script>
+    <h2>Occupancy</h2>
+    <div id="plot-occupancy" class="plot"></div>
+    <script>
+        var trace_occupancy = {"x": [0, 1, 2, 3, 4], "y": [0.0, 0.2, 0.6, 0.4, 0.0], "mode": "lines", "name": "Occupancy", "line": {"width": 2}};
+        var layout_occupancy = {
+            title: 'Occupancy',
+            xaxis: { title: 'Time' },
+            yaxis: { title: 'Units' },
+            hovermode: 'closest'
+        };
+        Plotly.newPlot('plot-occupancy', [trace_occupancy], layout_occupancy);
+    </script>
+
+  </div>
+</body>
+</html>
