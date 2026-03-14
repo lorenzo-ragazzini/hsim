@@ -2,7 +2,7 @@
 if __name__ == "__main__":
     import sys
     import os
-    sys.path.append("//".join(os.path.abspath(__file__).split("\\")[:os.path.abspath(__file__).split("\\").index("hsim")+1]))
+    sys.path.append("//".join(os.path.abspath(__file__).split(os.sep)[:os.path.abspath(__file__).split(os.sep).index("hsim")+1]))
 
 import time
 from hsim.core.utils.utils import log2, statelog

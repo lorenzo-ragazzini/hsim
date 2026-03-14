@@ -19,6 +19,7 @@ from collections import OrderedDict
 import numpy as np
 from hsim.core.core.event import BaseEvent as Event, Status
 from hsim.core.core.event import TimedEvent
+import salabim as sim
 
 DEBUG = False
 
@@ -152,7 +153,7 @@ class Counter():
     def __repr__(self) -> str:
         return "Counter({self.val})".format(self._value)
     
-class BaseEnvironment:
+class BaseEnvironment(sim.Environment):
     """
     Base class for simulation environments.
     
@@ -163,6 +164,7 @@ class BaseEnvironment:
         current_time: Initialize with current system time (default: False)
     """
     def __init__(self, real_time: Union[float,int,bool] = False, current_time: bool = False):
+        sim.Environment.__init__(self)
         self._now = 0.0 if not current_time else time.time()
         self.scheduler = Scheduler(self._time, self._sleep, self)
         self._objects = list()
@@ -200,7 +202,7 @@ class BaseEnvironment:
         Returns:
             The scheduled event
         """
-        return self.scheduler.enter(delay, priority, action, args, kwargs)
+        return self.scheduler.delay(delay, priority, action, args, kwargs)
 
     def schedule_absolute(self, time: float, priority: int, action: Callable[..., Any], *args: Any, **kwargs: Any) -> Event:
         """

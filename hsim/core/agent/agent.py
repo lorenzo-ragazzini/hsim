@@ -16,9 +16,10 @@ from typing import Any, Iterable, Union
 from hsim.core.core.env import Environment
 from hsim.core.fsm.FSM import FSM, get_class_dict
 from hsim.core.core.msg import Message
+import salabim as sim
 
-          
-class Agent(ABC):
+
+class AbstractAgent(ABC):
     stateMachine: FSM
     connections:dict[str,Union['Agent',Iterable['Agent']]]
 
@@ -68,14 +69,21 @@ class Agent(ABC):
         agentCopy._copy = self
         return agentCopy
 
+
+class Agent(AbstractAgent, sim.Component):
+    """Public agent class with salabim Component ancestry."""
+
+    def __init__(self, env, name: str = ""):
+        sim.Component.__init__(self, name=name, env=env)
+        AbstractAgent.__init__(self, env=env, name=name)
+
 class dotdict(dict):
     """MATLAB-like dot.notation access to dictionary attributes"""
     def __getattr__(self,name):
         try:
-            super().__getattr__(name)
             return super().__getitem__(name)
-        except AttributeError:
-            raise AttributeError()
+        except KeyError as exc:
+            raise AttributeError(name) from exc
     def __setattr__(self,name,value):
         super().__setitem__(name,value)
         super().__setattr__(name, value)
