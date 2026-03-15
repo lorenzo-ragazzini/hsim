@@ -286,4 +286,7 @@ class Environment(BaseEnvironment):
 
     def _sleep(self, delay: float) -> None:
         """Advance virtual time by delay amount."""
-        self._now += delay
+        if delay > 0:
+            sim.Environment.run(self, duration=delay)
+        else:
+            sim.Environment.run(self, duration=0)
