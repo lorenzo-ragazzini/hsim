@@ -57,7 +57,14 @@ cd hsim/GSOM/flask
 python app.py
 ```
 
+```bash
+python -m hsim.GSOM.flask.app
+```
+
 The web application will be available at `http://localhost:5000`
+
+### Emergency recover db:
+https://i40game.scm.azurewebsites.net/filemanager/site/wwwroot/hsim/GSOM/flask/static/db/
 
 ## Security Best Practices
 
