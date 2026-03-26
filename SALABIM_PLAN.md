@@ -17,22 +17,25 @@ Constraints:
 
 ```
 HSimEnvironment(salabim.Environment)
-    ├── yieldless=False, _any_yield=True
+    ├── yieldless=False
     ├── scheduler: CompatScheduler        ← drop-in for old Scheduler
+    ├── step()                            ← overridden to execute HSim events synchronously
     ├── _agents, activate_fsm()
     └── run(until) → salabim.run(till=N)
 
 CompatScheduler
     ├── _sequence_generator: Counter      ← consumed by BaseEvent.__init__
-    ├── _waiting: dict                    ← time==inf events (no component)
-    ├── enter(event)                      ← creates _HSIMComponent + _push()
-    ├── remove(event)                     ← comp._remove()
+    ├── _waiting: dict                    ← time==inf events
+    ├── enter(event)                      ← creates _HSIMComponent, pushes to _event_list
+    ├── remove(event)                     ← marks tuple as canceled
     └── execute(event)                    ← calls event.action(...)
 
 _HSIMComponent(salabim.Component)
-    ├── created with process=''           ← data component (no auto-start)
-    ├── setup(evt=event)                  ← stores event, sets _process=self._hsim_run()
-    └── _hsim_run() generator             ← executes HSim event lifecycle when popped
+    ├── created with process=''           ← no generator, no yield, fully picklable
+    ├── setup(evt=event)                  ← stores event
+    └── _hsim_run()                       ← standard method (not generator)
+
+# NO yield, NO generators, NO greenlet, FULLY picklable.
 
 HSim Events (BaseEvent, DelayEvent, ConditionedEvent, ...)  ← UNCHANGED
 HSim FSM + Observables                                      ← UNCHANGED
@@ -128,37 +131,27 @@ import salabim as _salabim
 **File:** `hsim/core/core/env.py`, insert after the `import salabim` block, before `class Scheduler`.
 
 **How it works:**
-- Created with `process=''` → salabim treats it as a data component (no auto-start)
-- `setup(evt=event)` is called at end of `__init__` by salabim; it stores the event and
-  manually wires `_process = self._hsim_run()` (generator object) + sets flags
-- `CompatScheduler.enter()` then calls `comp._push(t=..., ...)` to schedule on salabim's heap
-- When `step()` pops the component it calls `comp._process.send(return_value)`,
-  which runs `_hsim_run()` to completion (StopIteration → `_terminate(c)`)
+We wrap HSim events in an `_HSIMComponent(salabim.Component)`. To keep it completely picklable, we use `process=''` so it does **not** create a generator. Then our overridden `HSimEnvironment.step()` detects it, pops it, and synchronously executes normal object methods instead of dealing with execution frames.
 
 ```python
 class _HSIMComponent(_salabim.Component):
     """
     Bridge: wraps one HSim BaseEvent as a salabim Component.
-    Created per-event; executes the HSim event lifecycle when salabim pops it.
-    Uses yieldless=False (generator) mode — no greenlets.
+    No generator/yield is used, making it fully picklable.
+    By overriding env.step(), we execute its mapped event synchronously.
     """
 
-    def setup(self, *, evt):                         # receives extra kwargs from __init__
+    def setup(self, *, evt):
         self._hsim_evt = evt
-        # Manually wire generator process (bypasses salabim's auto-start logic)
-        self._process = self._hsim_run()             # generator object
-        self._process_isgenerator = True
-        self.env._any_yield = True                   # prevent salabim's "must yield" guard
 
-    def _hsim_run(self):                             # the actual generator executed by step()
+    def _hsim_run(self):
+        # A standard synchronous method, NOT a generator
         evt = self._hsim_evt
         if not getattr(evt, "_canceled", False):
             evt._status = Status.TRIGGERED
             evt._in_queue = False
             evt.env.scheduler.execute(evt)
             evt.process()
-        return
-        yield                                        # makes this a generator function
 ```
 
 Note: `Status` must be imported from `hsim.core.core.event`. Add to imports at top of `env.py`:
@@ -207,11 +200,10 @@ class CompatScheduler:
             comp = _HSIMComponent(
                 name=f"_hsim_{event.sequence}",
                 env=self._sal_env,
-                process="",                    # '' → data component (no auto-start)
-                evt=event,                     # consumed by setup()
+                process="",                    # '' → data component, NO generator, picklable
+                evt=event,                     # passed to setup()
             )
             event._sal_component = comp
-            # Clamp time to avoid floating-point rounding below env._now
             t = max(float(event.time), self._sal_env._now)
             comp._push(t=t, priority=float(event.priority), urgent=False)
         return event
@@ -307,14 +299,11 @@ class HSimEnvironment(_salabim.Environment):
         # Set yieldless=False BEFORE super().__init__ reads the global flag
         _salabim.yieldless(False)
         super().__init__(trace=False, yieldless=False)
-        # Allow generator processes without triggering salabim's "must yield" check
-        self._any_yield = True
 
         # HSim bookkeeping (mirrors BaseEnvironment.__init__)
         if current_time:
             import time as _time_mod
             self._now = _time_mod.time()
-        # else: salabim already set self._now = 0.0 in super().__init__
 
         self._objects: list = []
         self._agents: OrderedDict = OrderedDict()
@@ -323,6 +312,30 @@ class HSimEnvironment(_salabim.Environment):
 
         # Attach CompatScheduler (replaces Scheduler)
         self.scheduler = CompatScheduler(self)
+
+    def step(self):
+        """Override step() to cleanly and synchronously execute HSim events."""
+        import heapq
+        if self._stop:
+            raise _salabim.StopSimulation()
+        
+        if not self._event_list:
+            self._now = float('inf')
+            raise _salabim.StopSimulation()
+
+        # Look at the top of the heap without popping
+        t, priority, sq, item = self._event_list[0]
+        
+        if isinstance(item, _HSIMComponent):
+            # It's an HSim wrapper component; pop and process synchronously (no generators)
+            heapq.heappop(self._event_list)
+            self._now = t
+            item._status = _salabim.current
+            item._on_event_list = False
+            item._hsim_run()
+        else:
+            # It's a native salabim Component; let salabim handle it normally
+            super().step()
 
     # -----------------------------------------------------------------------
     # Time (salabim updates self._now in step(); we just expose it)
@@ -781,10 +794,4 @@ All existing tests (test_environment.py, test_agent.py, test_assembly.py, test_g
 
 ## Known Challenges
 
-1. **`_HSIMComponent` naming**: salabim tracks component names in `_nameserializeComponent`. High-frequency simulations will accumulate many `_hsim_N` names. If performance degrades, pass `suppress_trace=True` to `_HSIMComponent(...)`.
-
-2. **`process=''` on data component with `evt=` kwarg**: salabim's kwarg routing skips unused kwargs when `p=None` (data component) and passes them all to `setup()`. Confirm this by checking that `setup(evt=event)` is called correctly in the first test run.
-
-3. **salabim `_terminate()` cleanup**: After the generator returns, `_terminate()` releases claims/requests. Since `_HSIMComponent` never uses salabim resources, those dicts are empty — cleanup is safe.
-
-4. **`ConditionedEvent` re-trigger after processed**: If the reaktiv Effect fires `trigger()` after an event has been processed, `trigger()` checks `self.time == np.inf`. After execution, `time` stays at `env.now` (not reset to inf), so `trigger()` is a no-op. This is correct existing behavior.
+1. **`ConditionedEvent` re-trigger after processed**: If the reaktiv Effect fires `trigger()` after an event has been processed, `trigger()` checks `self.time == np.inf`. After execution, `time` stays at `env.now` (not reset to inf), so `trigger()` is a no-op. This is correct existing behavior.
