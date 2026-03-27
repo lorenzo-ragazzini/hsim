@@ -19,6 +19,12 @@ from hsim.core.agent.agent import Agent
 from hsim.core.core.msg import MessageQueue, Message, PriorityMessageQueue
 from hsim.core.core.event import BaseEvent, ConditionedEvent
 
+try:
+    import salabim as _salabim
+    _SALABIM_AVAILABLE = True
+except ImportError:
+    _SALABIM_AVAILABLE = False
+
 
 # def heappush(obs, item):
 #     return heapq.heappush(obs.value, item)
@@ -31,6 +37,19 @@ class Queue(MessageQueue):
         self.queue_size = self.queue.length()
         self.capacity_condition = self.queue_size < self.capacity
         self._inbound = dict()
+        
+        # --- salabim Monitor integration (opt-in when using HSimEnvironment) ---
+        self._entry_times: dict = {}    # id(msg) → entry sim time
+        if _SALABIM_AVAILABLE and isinstance(env, _salabim.Environment):
+            self.queue_length_monitor = _salabim.Monitor(
+                name=f"QLen_{id(self)}", level=True, initial_tally=0, env=env
+            )
+            self.wait_time_monitor = _salabim.Monitor(
+                name=f"QWait_{id(self)}", level=False, env=env
+            )
+        else:
+            self.queue_length_monitor = None
+            self.wait_time_monitor = None
         
     def take(self, agent:Agent) -> tuple[ConditionedEvent, Message]:
         msg:Message = Message(self.env, content=agent, receiver=self, wait=True)
@@ -52,17 +71,27 @@ class Queue(MessageQueue):
         # heappush(self.queue, msg)
         msg.receive()
         self._trigger()
+        # Monitor: record entry time + update length
+        self._entry_times[id(msg)] = self.env.now
+        if self.queue_length_monitor is not None:
+            self.queue_length_monitor.tally(len(self.queue))
         
     def get(self, msg=None) -> Message:
         if msg:
             self.queue.remove(msg)
             self._log_out(msg)
-            return msg
+            result = msg
         else:
-            msg = super().get()
+            result = super().get()
+        # Monitor: record wait time + update length
+        entry = self._entry_times.pop(id(result), None)
+        if entry is not None and self.wait_time_monitor is not None:
+            self.wait_time_monitor.tally(self.env.now - entry)
+        if self.queue_length_monitor is not None:
+            self.queue_length_monitor.tally(len(self.queue))
         # Events are automatically triggered by the observable system when conditions change
         # No need to manually verify conditions
-        return msg
+        return result
     
         
     def receive(self, *args, **kwargs):

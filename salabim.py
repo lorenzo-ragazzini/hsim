@@ -10661,8 +10661,14 @@ class Environment:
         self._video_repeat = 1
         self._video_pingpong = False
         if self.env._yieldless:
-            global greenlet
-            import greenlet
+            try:
+                global greenlet
+                import greenlet
+            except ImportError as exc:
+                raise ImportError(
+                    "greenlet is required for yieldless (greenlet) mode. "
+                    "Install with: pip install greenlet"
+                ) from exc
 
             self._glet = greenlet.greenlet(self.do_simulate)
 

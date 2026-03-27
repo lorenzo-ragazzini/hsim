@@ -27,7 +27,7 @@ class Status(Enum):
     CONDITIONED = auto()
     
 class BaseEvent():
-    __slots__ = ('env', 'sequence', 'time', 'priority', '_status', 'action', 'arguments', 'kwargs', '_conditioned', '_canceled', '_should_reset_on_false', '_in_queue')
+    __slots__ = ('env', 'sequence', 'time', 'priority', '_status', 'action', 'arguments', 'kwargs', '_conditioned', '_canceled', '_should_reset_on_false', '_in_queue', '_sal_component')
     def __init__(self, env: 'Environment', priority: Union[float,int]=1, action: Union[Iterable[Callable[..., Any]], Callable[..., Any]] = object, arguments: Any = None, **kwargs: Any): # type: ignore
         self.env = env
         self.sequence = next(env.scheduler._sequence_generator)
