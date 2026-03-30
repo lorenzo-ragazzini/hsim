@@ -3,8 +3,8 @@ import pytest
 import numpy as np
 
 def make_env():
-    from hsim.core.core.env import HSimEnvironment
-    return HSimEnvironment()
+    from hsim.core.core.env import Environment
+    return Environment()
 
 class TestInit:
     def test_now_zero(self):

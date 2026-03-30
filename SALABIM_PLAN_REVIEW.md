@@ -67,7 +67,7 @@ class Environment(_salabim.Environment):
             self.running = False
             return
         t, priority, sq, item, return_val = self._event_list[0]
-        if isinstance(item, _HSIMComponent):
+        if hasattr(item, '_hsim_run'):
             heapq.heappop(self._event_list)
             self._now = t
             item._on_event_list = False

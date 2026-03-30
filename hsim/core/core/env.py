@@ -266,31 +266,75 @@ class RealTimeEnvironment(BaseEnvironment):
         time.sleep(delay/self._real_time)
 
         
-class Environment(BaseEnvironment):
+class Environment(_salabim.Environment):
     """
-    Virtual time simulation environment.
-    
-    Time advances only when events are processed. No wall-clock delays.
-    This is the standard discrete event simulation environment.
-    
-    Args:
-        current_time: Initialize with current system time (default: False)
+    Virtual-time simulation environment backed by salabim's event scheduler.
+    Supports salabim animation and Monitor statistics natively.
+    All existing HSim agent/FSM/event code works unchanged.
     """
+
     def __init__(self, current_time: bool = False):
-        super().__init__(current_time=current_time)
-    
+        _salabim.yieldless(False)
+        super().__init__(trace=False, yieldless=False)
+
+        if current_time:
+            self._now = time.time()
+        # else: salabim already set self._now = 0.0 in super().__init__
+
+        self._objects: list = []
+        self._agents: OrderedDict = OrderedDict()
+        self.counter = Counter()
+        self._debug = DEBUG
+        self.scheduler = CompatScheduler(self)
+
+    def step(self):
+        """Override step() to execute HSim events synchronously."""
+        import heapq
+        if not getattr(self, "_event_list", []):
+            self.running = False
+            return
+        t, priority, sq, item, return_val = self._event_list[0]
+        if hasattr(item, '_hsim_run'):
+            heapq.heappop(self._event_list)
+            self._now = t
+            item._on_event_list = False
+            item._hsim_run()
+        else:
+            super().step()
+
     @property
     def now(self) -> float:
-        """Get current virtual simulation time."""
         return self._now
-        
+
     def _time(self) -> float:
-        """Get current virtual simulation time."""
         return self._now
 
     def _sleep(self, delay: float) -> None:
-        """Advance virtual time by delay amount."""
-        self._now += delay
+        pass  # salabim manages virtual time
+
+    def add_agent(self, obj) -> None:
+        count = self.counter()
+        key = obj.name if obj.name is not None else count
+        self._agents[key] = obj
+
+    def _activate_fsm(self) -> None:
+        for ag in self._agents.values():
+            ag.activate_fsm()
+
+    def schedule(self, delay: float, priority: int, action, *args, **kwargs):
+        return self.scheduler.delay(delay, priority, action, args, kwargs)
+
+    def schedule_absolute(self, time_: float, priority: int, action, *args, **kwargs):
+        return self.scheduler.enterabs(time_, priority, action, args, kwargs)
+
+    def run(self, until=None) -> None:
+        self._activate_fsm()
+        if until is not None:
+            super().run(till=until)
+        else:
+            super().run()
+
+HSimEnvironment = Environment  # backward-compat alias
 
 class _HSIMComponent(_salabim.Component):
     """
@@ -322,7 +366,7 @@ class CompatScheduler:
         scheduler.execute(event)              — executed directly in env.step()
     """
 
-    def __init__(self, sal_env: "HSimEnvironment"):
+    def __init__(self, sal_env: "Environment"):
         self._sal_env = sal_env
         self._waiting: dict = {}               # id(event) → event, for time==inf events
         self._sequence_generator = Counter()
@@ -427,81 +471,3 @@ class CompatScheduler:
     def late(self, priority, action, argument=(), kwargs={}) -> "Event":
         return self.enterabs(np.inf, priority, action, argument, kwargs)
 
-
-class HSimEnvironment(_salabim.Environment):
-    """
-    HSim simulation environment backed by salabim's event scheduler.
-
-    Replaces Environment for salabim-integrated simulations.
-    Supports salabim animation and Monitor statistics.
-    """
-
-    def __init__(self, current_time: bool = False):
-        _salabim.yieldless(False)
-        super().__init__(trace=False, yieldless=False)
-
-        if current_time:
-            import time as _time_mod
-            self._now = _time_mod.time()
-
-        self._objects: list = []
-        self._agents: OrderedDict = OrderedDict()
-        self.counter = Counter()
-        self._debug = DEBUG
-
-        self.scheduler = CompatScheduler(self)
-
-    def step(self):
-        """Override step() to cleanly and synchronously execute HSim events."""
-        import heapq
-        
-        if not getattr(self, "_event_list", []):
-            self.running = False
-            return
-            
-        # Look at the top of the heap without popping immediately so we can handle 
-        # native salabim processing if it's one of their components.
-        t, priority, sq, item, return_val = self._event_list[0]
-        
-        if isinstance(item, _HSIMComponent):
-            # Pop it!
-            heapq.heappop(self._event_list)
-            self._now = t
-            item._status = _salabim.current
-            item._on_event_list = False
-            item._hsim_run()
-        else:
-            # It's a native salabim item; let salabim components resume naturally.
-            super().step()
-
-    @property
-    def now(self) -> float:
-        return self._now
-
-    def _time(self) -> float:
-        return self._now
-
-    def _sleep(self, delay: float) -> None:
-        pass
-
-    def add_agent(self, obj) -> None:
-        count = self.counter()
-        key = obj.name if obj.name is not None else count
-        self._agents[key] = obj
-
-    def _activate_fsm(self) -> None:
-        for ag in self._agents.values():
-            ag.activate_fsm()
-
-    def schedule(self, delay: float, priority: int, action, *args, **kwargs):
-        return self.scheduler.delay(delay, priority, action, args, kwargs)
-
-    def schedule_absolute(self, time_: float, priority: int, action, *args, **kwargs):
-        return self.scheduler.enterabs(time_, priority, action, args, kwargs)
-
-    def run(self, until=None) -> None:
-        self._activate_fsm()
-        if until is not None:
-            super().run(till=until)
-        else:
-            super().run()
