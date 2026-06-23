@@ -7,7 +7,7 @@ if __name__ == "__main__":
         sys.path.append("//".join(os.path.abspath(__file__).split("\\")[:os.path.abspath(__file__).split("\\").index("hsim")+1]))
 
 
-from typing import Any, Dict, Iterable, List, Type, Union
+from typing import Any, Dict, Iterable, List, Optional, Type, Union
 import pandas as pd
 
 from hsim.core.core.msg import Message, MessageQueue
@@ -20,10 +20,14 @@ class FSM:
         self._states:List['State'] = []
         self._transitions:List['Transition'] = []
         self._transitions_dict:Dict[str, 'Transition'] = {}
-        self._messages:MessageQueue = MessageQueue(env)
+        # Lazily created: a MessageQueue allocates a reaktiv SortedList observable
+        # and parks a BaseEvent in the scheduler. Flow-through item FSMs (Empty
+        # state only) never receive messages, so building one per item is waste.
+        self._messages_lazy: Optional['MessageQueue'] = None
         self._pseudostates:List['Pseudostate'] = []
         self._state_history = []  # Track state history with timestamps
         self._transition_history = []  # Track transitions with timestamps
+        self._derived_cache = {}  # memoizes states/transitionsFrom/... ; cleared on add_element
         self.add_element(get_class_dict(self, State))
         self.add_element(get_class_dict(self, Pseudostate))
         self.add_element(get_class_dict(self, Transition))
@@ -42,6 +46,7 @@ class FSM:
             for e in element:
                 self.add_element(e)
         elif not isinstance(element, type):
+            self._derived_cache.clear()  # states/transitions changed -> drop memoized views
             if isinstance(element, State):
                 self._states.append(element)
             elif isinstance(element, Transition):
@@ -73,6 +78,13 @@ class FSM:
             name = f"{base}{count}"
             count += 1
         return name
+
+    @property
+    def _messages(self) -> 'MessageQueue':
+        mq = self._messages_lazy
+        if mq is None:
+            mq = self._messages_lazy = MessageQueue(self._env)
+        return mq
 
     def receive(self, message):
         self._messages.receive(message)
@@ -107,19 +119,28 @@ class FSM:
         return self._current_state
     @property
     def states(self):
-        return {state.name: state for state in self._states}
+        c = self._derived_cache.get('states')
+        if c is None:
+            c = self._derived_cache['states'] = {state.name: state for state in self._states}
+        return c
     @property
     def transitionsFrom(self):
-        res = {name: [] for name in self.states}
-        for transition in self._transitions:
-            res[transition.source.name].append(transition)
-        return res
+        c = self._derived_cache.get('transitionsFrom')
+        if c is None:
+            res = {name: [] for name in self.states}
+            for transition in self._transitions:
+                res[transition.source.name].append(transition)
+            c = self._derived_cache['transitionsFrom'] = res
+        return c
     @property
     def transitionsTo(self):
-        res = {name: [] for name in self.states}
-        for transition in self._transitions:
-            res[transition.target.name].append(transition)
-        return res
+        c = self._derived_cache.get('transitionsTo')
+        if c is None:
+            res = {name: [] for name in self.states}
+            for transition in self._transitions:
+                res[transition.target.name].append(transition)
+            c = self._derived_cache['transitionsTo'] = res
+        return c
     @property
     def transitionsFromTo(self):
         res = {}
@@ -177,10 +198,21 @@ class FSM:
     def transition_history_table(self):
         return pd.DataFrame(self.transition_history,columns=["Source","Target","Time"])
 
+_class_dict_cache = {}
+
 def get_class_dict(par, sub):
-    cls = [cls for cls in par.__class__.__mro__][0]
-    z = {**cls.__dict__, **dict()}
-    return [x for x in z.values() if hasattr(x,'__base__') and (x.__base__ is sub or (hasattr(x.__base__,'__base__') and x.__base__.__base__ is sub)) and type(x) is type]
+    # Result depends only on the class and `sub`, never the instance, so memoize
+    # it: this is called 3x per FSM construction (once per generated agent) and
+    # the class-dict scan + hasattr filtering otherwise reruns for every item.
+    cls = par.__class__
+    key = (cls, sub)
+    cached = _class_dict_cache.get(key)
+    if cached is not None:
+        return cached
+    z = cls.__dict__
+    result = [x for x in z.values() if hasattr(x,'__base__') and (x.__base__ is sub or (hasattr(x.__base__,'__base__') and x.__base__.__base__ is sub)) and type(x) is type]
+    _class_dict_cache[key] = result
+    return result
         
 
 

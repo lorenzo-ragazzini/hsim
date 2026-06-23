@@ -14,7 +14,7 @@ if __name__ == "__main__":
 from abc import abstractmethod
 import types
 import logging
-from typing import Any, Callable, Iterable, OrderedDict, Tuple
+from typing import Any, Callable, Iterable, Tuple
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ class Message():
         self.content = content
         self.receiver = receiver
         self.sender = sender
-        self.receipts = OrderedDict()
+        self.receipts = {}  # keyed access only; plain dict avoids typing.OrderedDict's slow __call__
         self.receipts["received"] = BaseEvent(env, action=self._on_received).add()
         self.receipts["read"] = BaseEvent(env, action=self._on_read).add()
         if receiver and not wait:
