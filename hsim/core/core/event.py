@@ -27,7 +27,7 @@ class Status(Enum):
     CONDITIONED = auto()
     
 class BaseEvent():
-    __slots__ = ('env', 'sequence', 'time', 'priority', '_status', 'action', 'arguments', 'kwargs', '_conditioned', '_canceled', '_should_reset_on_false', '_in_queue', '_sal_component')
+    __slots__ = ('env', 'sequence', 'time', 'priority', '_status', 'action', 'arguments', 'kwargs', '_conditioned', '_canceled', '_should_reset_on_false', '_in_queue', '_on_event_list')
     def __init__(self, env: 'Environment', priority: Union[float,int]=1, action: Union[Iterable[Callable[..., Any]], Callable[..., Any]] = object, arguments: Any = None, **kwargs: Any): # type: ignore
         self.env = env
         self.sequence = next(env.scheduler._sequence_generator)
@@ -42,6 +42,18 @@ class BaseEvent():
         self._canceled = False  # Add canceled flag
         self._should_reset_on_false = False  # Default for all events
         self._in_queue = False  # Track queue membership
+        self._on_event_list = False  # salabim _event_list membership flag
+    def _hsim_run(self) -> None:
+        """Execute this event synchronously when popped from salabim's event list.
+
+        The event is its own schedulable unit on salabim's `_event_list`; the
+        Environment.step() override calls this directly (no Component wrapper).
+        """
+        if not self._canceled:
+            self._status = Status.TRIGGERED
+            self._in_queue = False
+            self.env.scheduler.execute(self)
+            self.process()
     def add(self) -> BaseEvent:
         # If event is still in the queue, just unflag canceled
         self._canceled = False

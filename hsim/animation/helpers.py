@@ -15,7 +15,8 @@ class AnimateQueueLength:
     env   : HSimEnvironment (default: queue.env)
     """
 
-    def __init__(self, queue, x=50, y=50, width=20, height_scale=10, env=None):
+    def __init__(self, queue, x=50, y=50, width=20, height_scale=10, env=None,
+                 show_monitor=True):
         self._q = queue
         self._env = env or queue.env
 
@@ -27,12 +28,12 @@ class AnimateQueueLength:
             text=lambda _: str(len(queue.queue)),
             x=x + width / 2,
             y=lambda _: y + max(0, len(queue.queue) * height_scale) + 4,
-            anchor="s", env=self._env,
+            text_anchor="s", env=self._env,
         )
-        if getattr(queue, "queue_length_monitor", None) is not None:
+        if show_monitor and getattr(queue, "queue_length_monitor", None) is not None:
             sim.AnimateMonitor(
                 monitor=queue.queue_length_monitor,
-                x=x + width + 10, y=y, width=200, height=80, env=self._env,
+                x=x + width + 10, y=y, width=200, height=80,
             )
 
 class AnimateFSMState:

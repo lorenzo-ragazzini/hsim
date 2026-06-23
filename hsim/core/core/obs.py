@@ -54,17 +54,36 @@ Signal.set = _patched_signal_set
 ComputeSignal._is_running_in_current_thread = lambda self: False
 ComputeSignal._set_running_in_current_thread = lambda self, running: None
 
-# Cache for inspect.signature results to avoid repeated expensive introspection
-# This is safe because function signatures don't change during runtime
-_signature_cache = {}
+# Cache for inspect.signature results to avoid repeated expensive introspection.
+#
+# Keyed by id(obj), but id() is recycled once a transient object is garbage
+# collected — e.g. salabim passes freshly-created bound methods
+# (Component.__init__, Component.setup) to inspect.signature, and after they die
+# their address can be reused by an unrelated object. A naive id->signature cache
+# then returns the WRONG signature, which surfaced as spurious salabim
+# "parameter X not allowed" TypeErrors. We guard every hit with a weakref to the
+# original object: persistent objects (reaktiv signals, module-level functions)
+# stay cached and fast; transient bound methods die, so their stale entries fail
+# the identity check and are recomputed correctly.
+import weakref as _weakref
+_signature_cache = {}        # id(obj) -> (weakref(obj), signature)
 _original_inspect_signature = None
 
 def _get_cached_signature(obj):
-    """Get signature with caching by object id."""
-    obj_id = id(obj)
-    if obj_id not in _signature_cache:
-        _signature_cache[obj_id] = _original_inspect_signature(obj)
-    return _signature_cache[obj_id]
+    """Get signature with id-keyed caching, guarded against id() reuse."""
+    key = id(obj)
+    cached = _signature_cache.get(key)
+    if cached is not None:
+        ref, sig = cached
+        if ref() is obj:                  # same live object -> cache entry is valid
+            return sig
+        # id() was recycled by a different object: fall through and recompute.
+    sig = _original_inspect_signature(obj)
+    try:
+        _signature_cache[key] = (_weakref.ref(obj), sig)
+    except TypeError:
+        pass                              # not weak-referenceable: skip caching, stay correct
+    return sig
 
 # Monkey-patch inspect.signature AFTER module initialization
 # This avoids interfering with scipy's module-import-time signature introspection

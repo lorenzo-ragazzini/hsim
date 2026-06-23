@@ -289,15 +289,21 @@ class Environment(_salabim.Environment):
 
     def step(self):
         """Override step() to execute HSim events synchronously."""
-        import heapq
-        if not getattr(self, "_event_list", []):
+        el = self._event_list
+        if not el:
             self.running = False
             return
-        t, priority, sq, item, return_val = self._event_list[0]
+        t, priority, sq, item, return_val = el[0]
         if hasattr(item, '_hsim_run'):
-            heapq.heappop(self._event_list)
-            self._now = t
+            heapq.heappop(el)
+            item._in_queue = False
             item._on_event_list = False
+            # Skip stale tombstones, mirroring the legacy Scheduler.run guards:
+            #  - _canceled: event lazily cancelled (e.g. state exit cancels its timeout)
+            #  - time == inf: event was reset to inf (e.g. ConditionedEvent guard failed)
+            if item._canceled or item.time == np.inf:
+                return
+            self._now = t
             item._hsim_run()
         else:
             super().step()
@@ -336,28 +342,13 @@ class Environment(_salabim.Environment):
 
 HSimEnvironment = Environment  # backward-compat alias
 
-class _HSIMComponent(_salabim.Component):
-    """
-    Bridge: wraps one HSim BaseEvent as a salabim Component.
-    No generator/yield is used, making it fully picklable.
-    By overriding env.step(), we execute its mapped event synchronously.
-    """
-
-    def setup(self, *, evt):
-        self._hsim_evt = evt
-
-    def _hsim_run(self):
-        # A standard synchronous method, NOT a generator
-        evt = self._hsim_evt
-        if not getattr(evt, "_canceled", False):
-            evt._status = Status.TRIGGERED
-            evt._in_queue = False
-            evt.env.scheduler.execute(evt)
-            evt.process()
-
 class CompatScheduler:
     """
     Drop-in for Scheduler that delegates push/pop to salabim's _event_list.
+
+    HSim events are pushed onto salabim's _event_list *as themselves* (no
+    Component wrapper). Each BaseEvent exposes `_hsim_run()`, which the
+    Environment.step() override calls directly when the event is popped.
 
     Interface consumed by HSim event classes:
         next(scheduler._sequence_generator)   — BaseEvent.__init__
@@ -380,43 +371,38 @@ class CompatScheduler:
     # -----------------------------------------------------------------------
 
     def enter(self, event: "Event") -> "Event":
-        """Push event to salabim's _event_list as a pure data tuple."""
-        import heapq
+        """Push the raw event onto salabim's _event_list (no Component wrapper)."""
         event._in_queue = True
         if event.time == np.inf:
             self._waiting[id(event)] = event
         else:
             t = max(float(event.time), self._sal_env._now)
-            
-            comp = _HSIMComponent(
-                name=f"_hsim_{event.sequence}",
-                env=self._sal_env,
-                process="",
-                evt=event,
-            )
-            event._sal_component = comp
-            # _push is problematic since we use process='', we will manually push so step() can pop it
-            comp._on_event_list = True
-            self._sal_env._seq += 1
+            event._on_event_list = True
+            # Tie-break on event.sequence (ascending → FIFO) to match BaseEvent.__lt__
+            # so ordering is identical whether scheduled here or compared directly.
             heapq.heappush(
                 self._sal_env._event_list,
-                (t, float(event.priority), self._sal_env._seq, comp, None)
+                (t, float(event.priority), event.sequence, event, None)
             )
-            
         return event
 
     def remove(self, event: "Event") -> None:
-        """Mark event as canceled. (Heap cleanup happens during pop)"""
+        """Remove event from whichever collection holds it.
+
+        Hot-path cancellations (e.g. state exit) go through BaseEvent.cancel(),
+        which only flags `_canceled`; those tombstones are skipped in step().
+        remove() is reached only on rescheduling of an in-queue event — rare —
+        so the O(n) heap rebuild for finite events mirrors the legacy Scheduler.
+        """
         if not event._in_queue:
             return
         if event.time == np.inf:
             self._waiting.pop(id(event), None)
-        else:
-            comp = getattr(event, "_sal_component", None)
-            if comp is not None and getattr(comp, "_on_event_list", False):
-                comp._remove()
-            if hasattr(event, "_sal_component"):
-                del event._sal_component
+        elif event._on_event_list:
+            el = self._sal_env._event_list
+            el[:] = [entry for entry in el if entry[3] is not event]
+            heapq.heapify(el)
+            event._on_event_list = False
         event._in_queue = False
 
     def execute(self, event: "Event") -> None:
