@@ -279,7 +279,8 @@ class Environment(_salabim.Environment):
 
         if current_time:
             self._now = time.time()
-        # else: salabim already set self._now = 0.0 in super().__init__
+        else:
+            self._now = 0.0  # float zero, matching the legacy BaseEnvironment
 
         self._objects: list = []
         self._agents: OrderedDict = OrderedDict()
@@ -333,12 +334,19 @@ class Environment(_salabim.Environment):
     def schedule_absolute(self, time_: float, priority: int, action, *args, **kwargs):
         return self.scheduler.enterabs(time_, priority, action, args, kwargs)
 
+    def _stop_run(self) -> None:
+        self.running = False
+
     def run(self, until=None) -> None:
         self._activate_fsm()
         if until is not None:
-            super().run(till=until)
-        else:
-            super().run()
+            if until < self._now:
+                until += self._now
+            # Priority-0 stop event, matching the legacy `agentic` scheduler's
+            # StopSimulation: at t==until it fires before any normal (priority>=1)
+            # event, so events scheduled exactly at `until` do NOT execute.
+            self.scheduler.enterabs(until, 0, action=self._stop_run)
+        super().run()
 
 HSimEnvironment = Environment  # backward-compat alias
 
@@ -378,11 +386,13 @@ class CompatScheduler:
         else:
             t = max(float(event.time), self._sal_env._now)
             event._on_event_list = True
-            # Tie-break on event.sequence (ascending → FIFO) to match BaseEvent.__lt__
-            # so ordering is identical whether scheduled here or compared directly.
+            # Tie-break on -event.sequence (LIFO): later-scheduled events fire first
+            # for the same (time, priority). This matches the legacy heapq Scheduler
+            # on the `agentic` branch — (time, priority, -sequence, event) — so the
+            # salabim-backed env reproduces its exact event ordering.
             heapq.heappush(
                 self._sal_env._event_list,
-                (t, float(event.priority), event.sequence, event, None)
+                (t, float(event.priority), -event.sequence, event, None)
             )
         return event
 
