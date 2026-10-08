@@ -132,3 +132,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .conda/*
+
+# Node
+node_modules/
