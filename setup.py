@@ -13,7 +13,6 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/Industry40Lab/hsim",
     packages=setuptools.find_namespace_packages() + setuptools.find_packages(),
-    package_data={'hsim': ['c/dataset.csv']},
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Science/Research",
@@ -35,11 +34,12 @@ setuptools.setup(
         'sortedcontainers>=2.4.0',
         'numpy',
         'pandas',
-        'matplotlib',
-        'networkx',
         'openpyxl',
         'flask',
         'python-dotenv',
+        'plotly',
+        'reaktiv>=0.19',
+        'scipy',
     ],
     extras_require={
         'dev': [
